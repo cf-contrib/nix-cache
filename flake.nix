@@ -33,6 +33,7 @@
           packages = [
             rust-toolchain
             pkgs.pkg-config
+            pkgs.wrangler
           ];
 
           env = {

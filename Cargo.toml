@@ -8,6 +8,5 @@ authors = ["iamralch"]
 crate-type = ["cdylib"]
 
 [dependencies]
-worker = { version = "0.8", features = ['http'] }
-worker-macros = { version = "0.8", features = ['http'] }
-http = "1.3"
+worker = { version = "0.8" }
+worker-macros = { version = "0.8" }
