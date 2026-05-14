@@ -1,2 +1,3 @@
-# cf-nix-cache
+# cf-nix
+
 Cloudflare-native Nix binary cache using Workers, R2, and Rust.
