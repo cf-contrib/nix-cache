@@ -26,16 +26,6 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         Response::ok("")
     });
 
-    /// GET /nar/:hash.nar
-    ///
-    /// Serves the actual NAR archive (the binary payload) for the store
-    /// path identified by `:hash`. The NAR is the compressed archive of
-    /// the store path contents, fetched by Nix after reading the
-    /// corresponding `.narinfo` metadata.
-    router = router.get_async("/nar/:hash.nar", |_, _| async move {
-        // TODO: implement the endpoint
-        Response::ok("")
-    });
 
     /// GET /:hash
     ///
@@ -55,6 +45,17 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     /// narinfo contents. This allows for populating the cache with build
     /// results from external sources.
     router = router.put_async("/:hash", |_, _| async move {
+        // TODO: implement the endpoint
+        Response::ok("")
+    });
+
+    /// GET /nar/:hash.nar
+    ///
+    /// Serves the actual NAR archive (the binary payload) for the store
+    /// path identified by `:hash`. The NAR is the compressed archive of
+    /// the store path contents, fetched by Nix after reading the
+    /// corresponding `.narinfo` metadata.
+    router = router.get_async("/nar/:hash.nar", |_, _| async move {
         // TODO: implement the endpoint
         Response::ok("")
     });
