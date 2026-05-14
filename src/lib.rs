@@ -32,8 +32,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     // present in the cache. This allows Nix to batch-check availability
     // instead of issuing individual GET requests per package.
     router = router.post_async("/", |_, _| async move {
-        // TODO: implement the endpoint
-        Response::ok("")
+        Response::error("not implemented", 500)
     });
 
     // GET /:hash
@@ -43,8 +42,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     // file size, and other metadata required by Nix to perform
     // substitution of the corresponding store path.
     router = router.get_async("/:hash", |_, _| async move {
-        // TODO: implement the endpoint
-        Response::ok("")
+        Response::error("not implemented", 500)
     });
 
     // PUT /:hash
@@ -54,8 +52,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     // narinfo contents. This allows for populating the cache with build
     // results from external sources.
     router = router.put_async("/:hash", |_, _| async move {
-        // TODO: implement the endpoint
-        Response::ok("")
+        Response::error("not implemented", 500)
     });
 
     // GET /nar/:hash.nar
@@ -65,8 +62,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     // the store path contents, fetched by Nix after reading the
     // corresponding `.narinfo` metadata.
     router = router.get_async("/nar/:hash.nar", |_, _| async move {
-        // TODO: implement the endpoint
-        Response::ok("")
+        Response::error("not implemented", 500)
     });
 
     // PUT /nar/:hash.nar
@@ -76,8 +72,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     // Uploaded alongside the corresponding `.narinfo` to fully populate
     // a store path in the cache.
     router = router.put_async("/nar/:hash.nar", |_, _| async move {
-        // TODO: implement the endpoint
-        Response::ok("")
+        Response::error("not implemented", 500)
     });
 
     router.run(req, env).await
