@@ -1,3 +1,6 @@
+use std::borrow::Cow;
+
+use narinfo::*;
 use worker::*;
 
 #[event(fetch)]
@@ -11,8 +14,15 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     // version, and priority. This endpoint mirrors the `nix-cache-info`
     // file typically served by Nix binary caches.
     router = router.get("/nix-cache-info", |_, _| {
-        // TODO: implement the endpoint
-        Response::ok("")
+        let info = NixCacheInfo {
+            store_dir: Cow::from("/nix/store"),
+            wants_mass_query: false,
+            priority: 40,
+        };
+
+        let mut data = String::new();
+        info.serialize_into(&mut data).unwrap();
+        Response::ok(data)
     });
 
     // POST /
