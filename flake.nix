@@ -39,6 +39,8 @@
           };
           cargoHash = "sha256-enePrsTLpiTDxqnFFD38N4amOKY5oHHctPl9RFj2eRo=";
           buildAndTestSubdir = "worker-build";
+          nativeBuildInputs = [ pkgs.pkg-config ];
+          buildInputs = [ pkgs.openssl ];
           doCheck = false;
         };
       in

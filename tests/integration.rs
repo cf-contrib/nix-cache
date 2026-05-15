@@ -9,6 +9,6 @@ async fn test_get_nix_cache_info() {
     let data = response.text().await.expect("the body failed");
     let info = NixCacheInfo::parse(&data).expect("the response failed");
     assert_eq!(info.store_dir, "/nix/store");
-    assert_ne!(info.wants_mass_query, true);
+    assert!(!info.wants_mass_query);
     assert_eq!(info.priority, 40);
 }
