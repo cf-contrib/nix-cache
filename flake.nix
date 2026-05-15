@@ -26,19 +26,31 @@
         };
 
         rust-toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+
+        worker-build = pkgs.rustPlatform.buildRustPackage rec {
+          pname = "worker-build";
+          version = "0.8.3";
+          src = pkgs.fetchFromGitHub {
+            owner = "cloudflare";
+            repo = "workers-rs";
+            rev = "v${version}";
+            fetchSubmodules = true;
+            hash = "sha256-sRKQALNYUmzxaqYJCWR8b3yvqg8e4EHe1Cm7vqRx8hU=";
+          };
+          cargoHash = "sha256-enePrsTLpiTDxqnFFD38N4amOKY5oHHctPl9RFj2eRo=";
+          buildAndTestSubdir = "worker-build";
+          doCheck = false;
+        };
       in
       {
         devShells.default = pkgs.mkShell {
           name = "cf-nix-cache";
           packages = [
-            rust-toolchain
             pkgs.pkg-config
             pkgs.wrangler
+            rust-toolchain
+            worker-build
           ];
-
-          env = {
-            RUST_BACKTRACE = "1";
-          };
         };
       }
     );
