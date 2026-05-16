@@ -41,8 +41,27 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     // identified by `:hash`. The narinfo contains references, nar hash,
     // file size, and other metadata required by Nix to perform
     // substitution of the corresponding store path.
-    router = router.get_async("/:hash", |_, _| async move {
-        Response::error("not implemented", 500)
+    router = router.get_async("/:hash", |_, ctx| async move {
+        let Some(hash) = ctx.param("hash") else {
+            return Response::error("missing hash", 400);
+        };
+
+        let bucket = ctx.env.var("NIX_BUCKET")?.to_string();
+        let bucket = ctx.env.bucket(&bucket)?;
+        let object = format!("{hash}.narinfo");
+        let Some(object) = bucket.get(object).execute().await? else {
+            return Response::error("not found", 404);
+        };
+
+        let Some(body) = object.body() else {
+            return Response::error("object has no body", 500);
+        };
+        let body = body.text().await?;
+        let info = NarInfo::parse(&body)
+            .map_err(|err| worker::Error::RustError(format!("failed to parse narinfo: {err:?}")))?;
+        let mut data = String::new();
+        info.serialize_into(&mut data).unwrap();
+        Response::ok(data)
     });
 
     // PUT /:hash

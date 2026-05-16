@@ -3,5 +3,5 @@ main = "build/index.js"
 compatibility_date = "2026-05-14"
 
 [build]
-command = "worker-build --release --panic-unwind"
+command = "worker-build --release"
 
