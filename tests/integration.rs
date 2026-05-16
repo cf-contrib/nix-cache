@@ -37,7 +37,7 @@ async fn test_get_nar_info() {
     );
     assert_eq!(
         info.deriver.unwrap(),
-        "/nix/store/f9x8my1mqpayq9fy7c5mj6xyj4ic6in2-cf-nix-r2-fixture.drv"
+        "f9x8my1mqpayq9fy7c5mj6xyj4ic6in2-cf-nix-r2-fixture.drv"
     );
 }
 

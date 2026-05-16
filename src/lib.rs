@@ -65,6 +65,8 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             .map_err(|err| worker::Error::RustError(format!("failed to parse narinfo: {err:?}")))?;
         let mut data = String::new();
         info.serialize_into(&mut data).unwrap();
+        // The library does not emit a newline which causes the nix client to fail
+        data.push('\n');
 
         let mut response = Response::ok(data)?;
         response
@@ -79,7 +81,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     // by `:hash` into the cache. The request body should contain the
     // narinfo contents. This allows for populating the cache with build
     // results from external sources.
-    router = router.put_async("/:hash", |_, ctx| async move {
+    router = router.put_async("/:hash", |_, _| async move {
         Response::error("not implemented", 500)
     });
 
