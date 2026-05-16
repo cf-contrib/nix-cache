@@ -94,9 +94,14 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             return Response::error("missing hash", 400);
         };
 
+        let key = if hash.ends_with(".nar") {
+            hash.to_string()
+        } else {
+            format!("{hash}.nar")
+        };
+
         let bucket = ctx.env.bucket("NIX_BUCKET")?;
-        let object = format!("nar/{hash}.nar");
-        let Some(object) = bucket.get(object).execute().await? else {
+        let Some(object) = bucket.get(key).execute().await? else {
             return Response::error("object not found", 404);
         };
 

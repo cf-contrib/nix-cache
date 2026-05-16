@@ -19,6 +19,11 @@ async fn test_get_nar_info() {
         .await
         .expect("the request failed");
     assert_eq!(response.status(), 200);
+    assert_eq!(
+        response.headers().get("content-type").unwrap(),
+        "text/x-nix-narinfo"
+    );
+
     let data = response.text().await.expect("the body failed");
     let info = NarInfo::parse(&data).expect("the response failed");
     assert_eq!(info.url, "nar/j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0.nar");
@@ -39,6 +44,30 @@ async fn test_get_nar_info() {
 #[tokio::test]
 async fn test_get_nar_info_not_found() {
     let response = reqwest::get("http://127.0.0.1:8787/j6m2qd3dbsmhq0mw14yb9wijnm4pq6z1.narinfo")
+        .await
+        .expect("the request failed");
+    assert_eq!(response.status(), 404);
+}
+
+#[tokio::test]
+async fn test_get_nar() {
+    let response = reqwest::get("http://127.0.0.1:8787/nar/j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0.nar")
+        .await
+        .expect("the request failed");
+    assert_eq!(response.status(), 200);
+    assert_eq!(
+        response.headers().get("content-type").unwrap(),
+        "application/x-nix-archive"
+    );
+
+    let bytes = response.bytes().await.expect("body read failed");
+    assert!(!bytes.is_empty(), "nar body should not be empty");
+    assert_eq!(bytes.len(), 256);
+}
+
+#[tokio::test]
+async fn test_get_nar_not_found() {
+    let response = reqwest::get("http://127.0.0.1:8787/nar/j6m2qd3dbsmhq0mw14yb9wijnm4pq6z1.nar")
         .await
         .expect("the request failed");
     assert_eq!(response.status(), 404);
