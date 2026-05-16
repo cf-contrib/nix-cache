@@ -15,7 +15,7 @@ async fn test_get_nix_cache_info() {
 
 #[tokio::test]
 async fn test_get_nar_info() {
-    let response = reqwest::get("http://127.0.0.1:8787/j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0")
+    let response = reqwest::get("http://127.0.0.1:8787/j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0.narinfo")
         .await
         .expect("the request failed");
     assert_eq!(response.status(), 200);
@@ -38,7 +38,7 @@ async fn test_get_nar_info() {
 
 #[tokio::test]
 async fn test_get_nar_info_not_found() {
-    let response = reqwest::get("http://127.0.0.1:8787/j6m2qd3dbsmhq0mw14yb9wijnm4pq6z1")
+    let response = reqwest::get("http://127.0.0.1:8787/j6m2qd3dbsmhq0mw14yb9wijnm4pq6z1.narinfo")
         .await
         .expect("the request failed");
     assert_eq!(response.status(), 404);
