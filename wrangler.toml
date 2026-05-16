@@ -3,5 +3,8 @@ main = "build/index.js"
 compatibility_date = "2026-05-14"
 
 [build]
-command = "worker-build --release"
+command = "worker-build --dev"
 
+[[r2_buckets]]
+binding = "NIX_BUCKET"
+bucket_name = "nix-bucket-dev"

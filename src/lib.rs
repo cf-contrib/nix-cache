@@ -46,11 +46,10 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             return Response::error("missing hash", 400);
         };
 
-        let bucket = ctx.env.var("NIX_BUCKET")?.to_string();
-        let bucket = ctx.env.bucket(&bucket)?;
+        let bucket = ctx.env.bucket("NIX_BUCKET")?;
         let object = format!("{hash}.narinfo");
         let Some(object) = bucket.get(object).execute().await? else {
-            return Response::error("not found", 404);
+            return Response::error("object not found", 404);
         };
 
         let Some(body) = object.body() else {
@@ -61,7 +60,12 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             .map_err(|err| worker::Error::RustError(format!("failed to parse narinfo: {err:?}")))?;
         let mut data = String::new();
         info.serialize_into(&mut data).unwrap();
-        Response::ok(data)
+
+        let mut response = Response::ok(data)?;
+        response
+            .headers_mut()
+            .set("content-type", "text/x-nix-narinfo")?;
+        Ok(response)
     });
 
     // PUT /:hash
