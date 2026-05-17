@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt::Write};
 
 use narinfo::*;
 use worker::*;
@@ -16,7 +16,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     router = router.get("/nix-cache-info", |_, _| {
         let info = NixCacheInfo {
             store_dir: Cow::from("/nix/store"),
-            wants_mass_query: false,
+            wants_mass_query: true,
             priority: 40,
         };
 
@@ -31,8 +31,27 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     // path hashes in the request body and returns the subset that are
     // present in the cache. This allows Nix to batch-check availability
     // instead of issuing individual GET requests per package.
-    router = router.post_async("/", |_, _| async move {
-        Response::error("not implemented", 500)
+    router = router.post_async("/", |mut req, ctx| async move {
+        let body = req.text().await?;
+        let mut data = String::new();
+        let bucket = ctx.env.bucket("NIX_BUCKET")?;
+
+        for hash in body.lines() {
+            let key = if hash.ends_with(".narinfo") {
+                hash.to_string()
+            } else {
+                format!("{hash}.narinfo")
+            };
+
+            if bucket.head(key).await?.is_some() {
+                if !data.is_empty() {
+                    data.push('\n');
+                }
+                data.push_str(hash);
+            }
+        }
+
+        Response::ok(data)
     });
 
     // GET /:hash.narinfo

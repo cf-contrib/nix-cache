@@ -10,9 +10,9 @@ async fn test_get_nix_cache_info() {
     assert_eq!(response.status(), 200);
     let data = response.text().await.expect("the body failed");
     let info = NixCacheInfo::parse(&data).expect("the response failed");
-    assert_eq!(info.store_dir, "/nix/store");
-    assert!(!info.wants_mass_query);
     assert_eq!(info.priority, 40);
+    assert_eq!(info.store_dir, "/nix/store");
+    assert!(info.wants_mass_query);
 }
 
 #[tokio::test]
@@ -39,6 +39,28 @@ async fn test_get_nar_info() {
     assert_eq!(server_info.nar_hash, local_info.nar_hash);
     assert_eq!(server_info.store_path, local_info.store_path);
     assert_eq!(server_info.deriver.unwrap(), local_info.deriver.unwrap(),);
+}
+
+#[tokio::test]
+async fn test_post_nar_info() {
+    let file_type = "text/plain; charset=utf-8";
+    let file_name = "j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0.narinfo";
+    let file_path = format!("tests/fixture/{file_name}");
+    let file_data = std::fs::read_to_string(file_path).unwrap();
+
+    let post_resp = helper::put(file_name, file_type, file_data.clone())
+        .await
+        .expect("the request failed");
+    assert_eq!(post_resp.status(), 200);
+
+    let get_resp = helper::post("/", "text/x-nix-narinfo", file_name)
+        .await
+        .expect("the request failed");
+    assert_eq!(get_resp.status(), 200);
+    assert_eq!(get_resp.headers().get("content-type").unwrap(), file_type);
+
+    let resp_body = get_resp.text().await.expect("the body failed");
+    assert_eq!(resp_body, file_name);
 }
 
 #[tokio::test]
