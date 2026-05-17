@@ -1,8 +1,10 @@
+mod helper;
+
 use narinfo::{NarInfo, NixCacheInfo};
 
 #[tokio::test]
 async fn test_get_nix_cache_info() {
-    let response = reqwest::get("http://127.0.0.1:8787/nix-cache-info")
+    let response = helper::get("nix-cache-info")
         .await
         .expect("the request failed");
     assert_eq!(response.status(), 200);
@@ -15,35 +17,33 @@ async fn test_get_nix_cache_info() {
 
 #[tokio::test]
 async fn test_get_nar_info() {
-    let response = reqwest::get("http://127.0.0.1:8787/j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0.narinfo")
+    let file_type = "text/x-nix-narinfo";
+    let file_name = "j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0.narinfo";
+    let file_path = format!("tests/fixture/{file_name}");
+    let file_data = std::fs::read_to_string(file_path).unwrap();
+
+    let post_resp = helper::put(file_name, file_type, file_data.clone())
         .await
         .expect("the request failed");
-    assert_eq!(response.status(), 200);
-    assert_eq!(
-        response.headers().get("content-type").unwrap(),
-        "text/x-nix-narinfo"
-    );
+    assert_eq!(post_resp.status(), 200);
 
-    let data = response.text().await.expect("the body failed");
-    let info = NarInfo::parse(&data).expect("the response failed");
-    assert_eq!(info.url, "nar/j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0.nar");
-    assert_eq!(
-        info.nar_hash,
-        "sha256-LHdODcc9LKl8TykaDMvSkpcBrXrTcP8aW2B6trJhxdE="
-    );
-    assert_eq!(
-        info.store_path,
-        "/nix/store/j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0-cf-nix-r2-fixture"
-    );
-    assert_eq!(
-        info.deriver.unwrap(),
-        "f9x8my1mqpayq9fy7c5mj6xyj4ic6in2-cf-nix-r2-fixture.drv"
-    );
+    let get_resp = helper::get(file_name).await.expect("the request failed");
+    assert_eq!(get_resp.status(), 200);
+    assert_eq!(get_resp.headers().get("content-type").unwrap(), file_type);
+
+    let resp_body = get_resp.text().await.expect("the body failed");
+
+    let local_info = NarInfo::parse(&file_data).unwrap();
+    let server_info = NarInfo::parse(&resp_body).expect("the response failed");
+    assert_eq!(server_info.url, local_info.url);
+    assert_eq!(server_info.nar_hash, local_info.nar_hash);
+    assert_eq!(server_info.store_path, local_info.store_path);
+    assert_eq!(server_info.deriver.unwrap(), local_info.deriver.unwrap(),);
 }
 
 #[tokio::test]
 async fn test_get_nar_info_not_found() {
-    let response = reqwest::get("http://127.0.0.1:8787/j6m2qd3dbsmhq0mw14yb9wijnm4pq6z1.narinfo")
+    let response = helper::get("j6m2qd3dbsmhq0mw14yb9wijnm4pq6z1.narinfo")
         .await
         .expect("the request failed");
     assert_eq!(response.status(), 404);
@@ -51,7 +51,7 @@ async fn test_get_nar_info_not_found() {
 
 #[tokio::test]
 async fn test_get_nar() {
-    let response = reqwest::get("http://127.0.0.1:8787/nar/j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0.nar")
+    let response = helper::get("nar/j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0.nar")
         .await
         .expect("the request failed");
     assert_eq!(response.status(), 200);
@@ -67,7 +67,7 @@ async fn test_get_nar() {
 
 #[tokio::test]
 async fn test_get_nar_not_found() {
-    let response = reqwest::get("http://127.0.0.1:8787/nar/j6m2qd3dbsmhq0mw14yb9wijnm4pq6z1.nar")
+    let response = helper::get("nar/j6m2qd3dbsmhq0mw14yb9wijnm4pq6z1.nar")
         .await
         .expect("the request failed");
     assert_eq!(response.status(), 404);

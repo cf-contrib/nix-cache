@@ -61,8 +61,14 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             return Response::error("object has no body", 500);
         };
         let body = body.text().await?;
-        let info = NarInfo::parse(&body)
-            .map_err(|err| worker::Error::RustError(format!("failed to parse narinfo: {err:?}")))?;
+        let info = match NarInfo::parse(&body) {
+            Ok(info) => info,
+            Err(err) => {
+                console_error!("narinfo parse failed: {err:?}");
+                return Response::error("object has an invalid body", 500);
+            }
+        };
+
         let mut data = String::new();
         info.serialize_into(&mut data).unwrap();
         // The library does not emit a newline which causes the nix client to fail
@@ -81,8 +87,33 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     // by `:hash` into the cache. The request body should contain the
     // narinfo contents. This allows for populating the cache with build
     // results from external sources.
-    router = router.put_async("/:hash", |_, _| async move {
-        Response::error("not implemented", 500)
+    router = router.put_async("/:hash", |mut req, ctx| async move {
+        let Some(hash) = ctx.param("hash") else {
+            return Response::error("missing hash", 400);
+        };
+
+        let key = if hash.ends_with(".narinfo") {
+            hash.to_string()
+        } else {
+            format!("{hash}.narinfo")
+        };
+
+        let body = req.text().await?;
+        let info = match NarInfo::parse(&body) {
+            Ok(info) => info,
+            Err(err) => {
+                console_error!("narinfo parse failed: {err:?}");
+                return Response::error("invalid body", 400);
+            }
+        };
+
+        let mut data = String::new();
+        info.serialize_into(&mut data).unwrap();
+
+        let bucket = ctx.env.bucket("NIX_BUCKET")?;
+        bucket.put(key, data).execute().await?;
+
+        Response::empty()
     });
 
     // GET /nar/:hash.nar
