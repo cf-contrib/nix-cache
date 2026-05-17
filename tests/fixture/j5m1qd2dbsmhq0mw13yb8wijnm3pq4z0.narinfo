@@ -1,0 +1,7 @@
+StorePath: /nix/store/j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0-cf-nix-r2-fixture
+URL: nar/j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0.nar
+NarHash: sha256-LHdODcc9LKl8TykaDMvSkpcBrXrTcP8aW2B6trJhxdE=
+NarSize: 256
+References:
+Deriver: /nix/store/f9x8my1mqpayq9fy7c5mj6xyj4ic6in2-cf-nix-r2-fixture.drv
+Compression: none
