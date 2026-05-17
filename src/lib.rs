@@ -155,8 +155,25 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     // The request body should contain the compressed NAR binary.
     // Uploaded alongside the corresponding `.narinfo` to fully populate
     // a store path in the cache.
-    router = router.put_async("/nar/:hash", |_, _| async move {
-        Response::error("not implemented", 500)
+    router = router.put_async("/nar/:hash", |req, ctx| async move {
+        let Some(hash) = ctx.param("hash") else {
+            return Response::error("missing hash", 400);
+        };
+
+        let key = if hash.ends_with(".nar") {
+            hash.to_string()
+        } else {
+            format!("{hash}.nar")
+        };
+
+        let body = match req.inner().body() {
+            Some(stream) => stream,
+            None => return Response::error("missing body", 400),
+        };
+        let bucket = ctx.env.bucket("NIX_BUCKET")?;
+        bucket.put(key, body).execute().await?;
+
+        Response::empty()
     });
 
     router.run(req, env).await
