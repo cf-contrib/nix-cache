@@ -84,17 +84,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cf-nix"
-version = "0.1.0"
-dependencies = [
- "narinfo",
- "reqwest",
- "tokio",
- "worker",
- "worker-macros",
-]
-
-[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -767,6 +756,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b79c2c0f376e3f5a9307d9a22b7f9dd5acb441d9e641d8a26e0ad9dfd0b4a1e2"
 dependencies = [
  "derive_builder",
+]
+
+[[package]]
+name = "nix-cache"
+version = "0.1.0"
+dependencies = [
+ "narinfo",
+ "reqwest",
+ "tokio",
+ "worker",
+ "worker-macros",
 ]
 
 [[package]]
