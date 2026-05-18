@@ -8,3 +8,6 @@ command = "worker-build --dev"
 [[r2_buckets]]
 binding = "NIX_BUCKET"
 bucket_name = "nix-bucket-dev"
+
+[vars]
+NIX_TOKEN = "nix-token-dev"

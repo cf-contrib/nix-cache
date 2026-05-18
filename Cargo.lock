@@ -405,6 +405,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "http-auth-basic"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e92637d714ad90b81c91bce86e8c1f98fb32ca79bddf8d69e9d83fee3966946"
+dependencies = [
+ "base64",
+]
+
+[[package]]
 name = "http-body"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -762,6 +771,7 @@ dependencies = [
 name = "nix-cache"
 version = "0.1.0"
 dependencies = [
+ "http-auth-basic",
  "narinfo",
  "reqwest",
  "tokio",
