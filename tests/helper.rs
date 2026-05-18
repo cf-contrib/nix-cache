@@ -38,9 +38,11 @@ pub async fn post<B: Into<Body>>(
         .await
 }
 
-/// Sends an HTTP PUT request with the given content type and body.
+/// Sends an HTTP PUT request with the given content type, body, and
+/// optional Authorization header.
 ///
 /// Builds a `reqwest::Client`, attaches the `content-type` header,
+/// optionally attaches an `Authorization` header with the provided token,
 /// and sends the body in a PUT request to the target URL.
 pub async fn put<B: Into<Body>>(
     path: &str,
@@ -54,6 +56,7 @@ pub async fn put<B: Into<Body>>(
         .put(url.to_string())
         .body(content_body)
         .header("content-type", content_type)
+        .basic_auth("x-auth-token", Some("nix-token-dev"))
         .send()
         .await
 }

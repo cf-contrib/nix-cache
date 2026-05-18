@@ -1,5 +1,6 @@
 use std::{borrow::Cow, fmt::Write};
 
+use http_auth_basic::{AuthBasicError, Credentials};
 use narinfo::*;
 use worker::*;
 
@@ -8,12 +9,33 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     Router::new()
         .get("/nix-cache-info", get_nix_cache_info)
         .post_async("/", post_mass_query)
-        .get_async("/:hash", get_narinfo)
-        .put_async("/:hash", put_narinfo)
+        .get_async("/:hash", get_nar_info)
+        .put_async("/:hash", put_nar_info)
         .get_async("/nar/:hash", get_nar)
         .put_async("/nar/:hash", put_nar)
         .run(req, env)
         .await
+}
+
+fn basic_auth(req: &Request, env: &Env) -> Result<Credentials, AuthBasicError> {
+    let Some(header) = req.headers().get("Authorization").unwrap_or_default() else {
+        return Err(AuthBasicError::InvalidAuthorizationHeader);
+    };
+
+    let input = Credentials::from_header(header)?;
+    let token = Credentials {
+        user_id: "x-auth-token".to_string(),
+        password: env
+            .var("NIX_TOKEN")
+            .map_err(|_| AuthBasicError::InvalidAuthorizationHeader)?
+            .to_string(),
+    };
+
+    if !input.eq(&token) {
+        return Err(AuthBasicError::InvalidAuthorizationHeader);
+    }
+
+    Ok(input)
 }
 
 /// GET /nix-cache-info
@@ -66,7 +88,7 @@ async fn post_mass_query(mut req: Request, ctx: RouteContext<()>) -> Result<Resp
 /// identified by `:hash`. The narinfo contains references, nar hash,
 /// file size, and other metadata required by Nix to perform
 /// substitution of the corresponding store path.
-async fn get_narinfo(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
+async fn get_nar_info(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let Some(hash) = ctx.param("hash") else {
         return Response::error("missing hash", 400);
     };
@@ -112,7 +134,11 @@ async fn get_narinfo(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
 /// by `:hash` into the cache. The request body should contain the
 /// narinfo contents. This allows for populating the cache with build
 /// results from external sources.
-async fn put_narinfo(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+async fn put_nar_info(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    if basic_auth(&req, &ctx.env).is_err() {
+        return Response::error("access denied", 401);
+    }
+
     let Some(hash) = ctx.param("hash") else {
         return Response::error("missing hash", 400);
     };
@@ -181,6 +207,10 @@ async fn get_nar(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
 /// Uploaded alongside the corresponding `.narinfo` to fully populate
 /// a store path in the cache.
 async fn put_nar(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    if basic_auth(&req, &ctx.env).is_err() {
+        return Response::error("access denied", 401);
+    }
+
     let Some(hash) = ctx.param("hash") else {
         return Response::error("missing hash", 400);
     };
