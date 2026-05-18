@@ -60,7 +60,9 @@ async fn test_post_nar_info() {
     assert_eq!(get_resp.headers().get("content-type").unwrap(), file_type);
 
     let resp_body = get_resp.text().await.expect("the body failed");
-    assert_eq!(resp_body, file_name);
+    let lines: Vec<&str> = resp_body.lines().collect();
+    assert_eq!(lines.len(), 1);
+    assert_eq!(lines.first().unwrap(), &file_name);
 }
 
 #[tokio::test]

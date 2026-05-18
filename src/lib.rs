@@ -44,10 +44,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             };
 
             if bucket.head(key).await?.is_some() {
-                if !data.is_empty() {
-                    data.push('\n');
-                }
-                data.push_str(hash);
+                writeln!(data, "{hash}").unwrap();
             }
         }
 
@@ -91,7 +88,7 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         let mut data = String::new();
         info.serialize_into(&mut data).unwrap();
         // The library does not emit a newline which causes the nix client to fail
-        data.push('\n');
+        writeln!(data).unwrap();
 
         let mut response = Response::ok(data)?;
         response
