@@ -3,7 +3,7 @@ use std::{borrow::Cow, fmt::Write};
 mod model;
 
 use http_auth_basic::Credentials;
-use model::{NarInfoUploadContext, Validate};
+use model::{NarInfoContext, Validate};
 use narinfo::*;
 use worker::*;
 
@@ -168,12 +168,10 @@ async fn put_nar_info(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
             return Response::error("invalid body", 400);
         }
     };
-
-    let hash = hash.strip_suffix(".narinfo").unwrap_or(hash);
-    let upload_ctx = NarInfoUploadContext {
-        hash: hash.to_string(),
+    let info_ctx = NarInfoContext {
+        hash: hash.strip_suffix(".narinfo").unwrap_or(hash).to_string(),
     };
-    if let Err(msg) = info.validate(&upload_ctx) {
+    if let Err(msg) = info.validate(&info_ctx) {
         return Response::error(msg, 400);
     }
 
