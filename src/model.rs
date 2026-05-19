@@ -106,10 +106,26 @@ impl Validate for NarInfo<'_> {
             return Err("StorePath must start with /nix/store/".to_string());
         }
 
-        // URL must be nar/<hash>.nar
-        let expected_url = format!("nar/{}.nar", ctx.hash);
-        if self.url != expected_url {
-            return Err(format!("URL must be {expected_url}"));
+        // Bind the narinfo to its route: the store path must start with the
+        // hash from the request URL (`/<hash>.narinfo`). Prevents uploading
+        // narinfo for store path B under route /A.narinfo.
+        let store_path_hash_prefix = format!("/nix/store/{}-", ctx.hash);
+        if !self.store_path.starts_with(&store_path_hash_prefix) {
+            return Err(format!(
+                "StorePath hash must match the request route ({})",
+                ctx.hash
+            ));
+        }
+
+        // URL must be of the form `nar/<file-hash>.nar`. The file hash is
+        // distinct from the store-path hash (it's derived from the NAR bytes),
+        // so we only validate shape, not equality with `ctx.hash`. Compression
+        // suffixes (e.g. `.nar.xz`) are not supported by this cache.
+        if !self.url.starts_with("nar/") || !self.url.ends_with(".nar") {
+            return Err("URL must be of the form nar/<file-hash>.nar".to_string());
+        }
+        if self.url.len() <= "nar/.nar".len() {
+            return Err("URL must include a non-empty file hash".to_string());
         }
 
         validate_sha256_hash_field("NarHash", &self.nar_hash)?;
@@ -129,9 +145,12 @@ impl Validate for NarInfo<'_> {
         }
 
         // Optional fields
+        // Deriver is the *basename* of the .drv (path relative to /nix/store),
+        // not a full store path. See the cache.nixos.org narinfo format.
         if let Some(deriver) = &self.deriver {
-            if !deriver.starts_with("/nix/store/") {
-                return Err("Deriver must start with /nix/store/".to_string());
+            let s = deriver.as_ref();
+            if !s.ends_with(".drv") || s.contains('/') {
+                return Err("Deriver must be a basename ending in .drv".to_string());
             }
         }
 
@@ -318,9 +337,33 @@ mod tests {
     }
 
     #[test]
-    fn narinfo_validate_rejects_url_mismatch() {
+    fn narinfo_validate_accepts_url_with_distinct_file_hash() {
+        // The URL's file hash is different from the store-path hash by design.
         let mut info = narinfo();
         info.url = "nar/zzz.nar";
+
+        let ctx = NarInfoContext {
+            hash: "abc".to_string(),
+        };
+        assert!(info.validate(&ctx).is_ok());
+    }
+
+    #[test]
+    fn narinfo_validate_rejects_url_outside_nar_dir() {
+        let mut info = narinfo();
+        info.url = "foo/abc.nar";
+
+        let ctx = NarInfoContext {
+            hash: "abc".to_string(),
+        };
+        let err = info.validate(&ctx).unwrap_err();
+        assert!(err.contains("URL"));
+    }
+
+    #[test]
+    fn narinfo_validate_rejects_compressed_url() {
+        let mut info = narinfo();
+        info.url = "nar/abc.nar.xz";
 
         let ctx = NarInfoContext {
             hash: "abc".to_string(),

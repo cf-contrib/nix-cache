@@ -16,8 +16,10 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     Router::new()
         .get("/nix-cache-info", get_nix_cache_info)
         .post_async("/", post_mass_query)
+        .head_async("/:hash", head_nar_info)
         .get_async("/:hash", get_nar_info)
         .put_async("/:hash", put_nar_info)
+        .head_async("/nar/:hash", head_nar)
         .get_async("/nar/:hash", get_nar)
         .put_async("/nar/:hash", put_nar)
         .run(req, env)
@@ -95,6 +97,24 @@ async fn post_mass_query(mut req: Request, ctx: RouteContext<()>) -> Result<Resp
     }
 
     Response::ok(data)
+}
+
+/// HEAD /:hash.narinfo — used by Nix uploaders to skip already-cached paths.
+async fn head_nar_info(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    let Some(hash) = ctx.param("hash") else {
+        return Response::error("missing hash", 400);
+    };
+    let key = if hash.ends_with(".narinfo") {
+        hash.to_string()
+    } else {
+        format!("{hash}.narinfo")
+    };
+    let bucket = ctx.env.bucket("NIX_BUCKET")?;
+    if bucket.head(key).await?.is_some() {
+        Response::empty()
+    } else {
+        Response::error("object not found", 404)
+    }
 }
 
 /// GET /:hash.narinfo
@@ -200,6 +220,24 @@ async fn put_nar_info(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
     bucket.put(key, data).execute().await?;
 
     Response::empty()
+}
+
+/// HEAD /nar/:hash.nar — used by Nix uploaders to skip already-cached NARs.
+async fn head_nar(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    let Some(hash) = ctx.param("hash") else {
+        return Response::error("missing hash", 400);
+    };
+    let key = if hash.ends_with(".nar") {
+        hash.to_string()
+    } else {
+        format!("{hash}.nar")
+    };
+    let bucket = ctx.env.bucket("NIX_BUCKET")?;
+    if bucket.head(key).await?.is_some() {
+        Response::empty()
+    } else {
+        Response::error("object not found", 404)
+    }
 }
 
 /// GET /nar/:hash.nar
