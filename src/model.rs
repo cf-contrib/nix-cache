@@ -2,28 +2,13 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use ed25519_dalek_v2::{Signature, Signer, SigningKey as DalekSigningKey};
 use narinfo::{NarInfo, Sig};
 
-/// Generic validation trait for domain objects.
-///
-/// This crate uses `Validate` to keep request-specific validation logic close to
-/// the data model, while still allowing callers to pass request context (route
-/// params, etc.) via an associated `Context` type.
 pub trait Validate {
-    /// Extra inputs required to validate `Self`.
     type Context;
 
-    /// Validate `self` using the provided `ctx`.
-    ///
-    /// Returns `Ok(())` on success, or a human-readable error message on failure.
     fn validate(&self, ctx: &Self::Context) -> Result<(), String>;
 }
 
-/// Parsed Nix signing secret used to produce `.narinfo` `Sig:` entries.
-///
-/// This corresponds to `NIX_SIGNING_SECRET` in the form `<key-name>:<base64>`,
-/// where the base64 decodes to 64 Ed25519 key bytes (secret + public) as emitted
-/// by `nix key generate-secret`.
 pub struct NarInfoSigKey {
-    /// Nix signing key name (e.g. `cache.example.org-1`).
     pub key_name: String,
     /// Base64 public key bytes (32 bytes when decoded).
     pub public_key_b64: String,
