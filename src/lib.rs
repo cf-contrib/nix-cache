@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt::Write, future::Future, pin::Pin};
+use std::{borrow::Cow, fmt::Write};
 
 use http_auth_basic::Credentials;
 use narinfo::*;
@@ -6,57 +6,56 @@ use worker::*;
 
 #[event(fetch)]
 async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
+    if !authorize(&req, &env) {
+        return Response::error("access denied", 401);
+    }
+
     Router::new()
         .get("/nix-cache-info", get_nix_cache_info)
         .post_async("/", post_mass_query)
         .get_async("/:hash", get_nar_info)
-        .put_async("/:hash", with_basic_auth(put_nar_info))
+        .put_async("/:hash", put_nar_info)
         .get_async("/nar/:hash", get_nar)
-        .put_async("/nar/:hash", with_basic_auth(put_nar))
+        .put_async("/nar/:hash", put_nar)
         .run(req, env)
         .await
 }
 
-fn authorize(req: &Request, env: &Env) -> Result<(), Response> {
+/// Validates HTTP Basic credentials for PUT requests.
+///
+/// This worker uses Basic Auth with the username set to `"x-auth-token"` and
+/// the password set to the configured `NIX_TOKEN` value.
+///
+/// Returns `true` when the request contains a valid `Authorization` header and
+/// the credentials match; otherwise returns `false`.
+fn authorize(req: &Request, env: &Env) -> bool {
+    if req.method() != Method::Put {
+        return true;
+    }
+
     let Some(header) = req.headers().get("Authorization").unwrap_or_default() else {
-        return Err(Response::error("access denied", 401).unwrap());
+        return false;
     };
 
-    let input = Credentials::from_header(header)
-        .map_err(|_| Response::error("access denied", 401).unwrap())?;
+    let input = match Credentials::from_header(header) {
+        Ok(input) => input,
+        Err(_) => return false,
+    };
 
-    let token = Credentials {
+    let expected = Credentials {
         user_id: "x-auth-token".to_string(),
-        password: env
-            .var("NIX_TOKEN")
-            .map_err(|_| Response::error("access denied", 401).unwrap())?
-            .to_string(),
+        password: match env.var("NIX_TOKEN") {
+            Ok(secret) => secret.to_string(),
+            Err(_) => return false,
+        },
     };
 
-    if !input.eq(&token) {
-        return Err(Response::error("access denied", 401).unwrap());
-    }
-
-    Ok(())
+    input.eq(&expected)
 }
 
-fn with_basic_auth<H, Fut>(
-    handler: H,
-) -> impl Fn(Request, RouteContext<()>) -> Pin<Box<dyn Future<Output = Result<Response>> + 'static>>
-where
-    H: Fn(Request, RouteContext<()>) -> Fut + Copy + 'static,
-    Fut: Future<Output = Result<Response>> + 'static,
-{
-    move |req: Request, ctx: RouteContext<()>| {
-        Box::pin(async move {
-            if let Err(resp) = authorize(&req, &ctx.env) {
-                return Ok(resp);
-            }
-            handler(req, ctx).await
-        })
-    }
-}
-
+/// GET /nix-cache-info
+///
+/// Returns the cache configuration in the format expected by the Nix client.
 fn get_nix_cache_info(_req: Request, _ctx: RouteContext<()>) -> Result<Response> {
     let info = NixCacheInfo {
         store_dir: Cow::from("/nix/store"),
