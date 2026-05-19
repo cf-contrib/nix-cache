@@ -2,6 +2,10 @@
 resource "cloudflare_worker" "nix_cache" {
   account_id = var.cloudflare_account_id
   name       = var.worker_name
+
+  subdomain = {
+    enabled = true
+  }
 }
 
 # Upload a new version on every asset / binding change. The modules list
@@ -15,14 +19,14 @@ resource "cloudflare_worker_version" "nix_cache" {
 
   modules = [
     {
-      name         = "index.js"
-      content_type = "application/javascript+module"
-      content_file = local_file.index_js.filename
+      name           = "index.js"
+      content_type   = "application/javascript+module"
+      content_base64 = base64encode(data.http.index_js.response_body)
     },
     {
-      name         = "index_bg.wasm"
-      content_type = "application/wasm"
-      content_file = local_file.index_wasm.filename
+      name           = "index_bg.wasm"
+      content_type   = "application/wasm"
+      content_base64 = data.http.index_wasm.response_body_base64
     },
   ]
 
