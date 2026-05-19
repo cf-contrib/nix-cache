@@ -1,6 +1,6 @@
-use std::{borrow::Cow, fmt::Write};
+use std::{borrow::Cow, fmt::Write, future::Future, pin::Pin};
 
-use http_auth_basic::{AuthBasicError, Credentials};
+use http_auth_basic::Credentials;
 use narinfo::*;
 use worker::*;
 
@@ -10,40 +10,53 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         .get("/nix-cache-info", get_nix_cache_info)
         .post_async("/", post_mass_query)
         .get_async("/:hash", get_nar_info)
-        .put_async("/:hash", put_nar_info)
+        .put_async("/:hash", with_basic_auth(put_nar_info))
         .get_async("/nar/:hash", get_nar)
-        .put_async("/nar/:hash", put_nar)
+        .put_async("/nar/:hash", with_basic_auth(put_nar))
         .run(req, env)
         .await
 }
 
-fn basic_auth(req: &Request, env: &Env) -> Result<Credentials, AuthBasicError> {
+fn authorize(req: &Request, env: &Env) -> Result<(), Response> {
     let Some(header) = req.headers().get("Authorization").unwrap_or_default() else {
-        return Err(AuthBasicError::InvalidAuthorizationHeader);
+        return Err(Response::error("access denied", 401).unwrap());
     };
 
-    let input = Credentials::from_header(header)?;
+    let input = Credentials::from_header(header)
+        .map_err(|_| Response::error("access denied", 401).unwrap())?;
+
     let token = Credentials {
         user_id: "x-auth-token".to_string(),
         password: env
             .var("NIX_TOKEN")
-            .map_err(|_| AuthBasicError::InvalidAuthorizationHeader)?
+            .map_err(|_| Response::error("access denied", 401).unwrap())?
             .to_string(),
     };
 
     if !input.eq(&token) {
-        return Err(AuthBasicError::InvalidAuthorizationHeader);
+        return Err(Response::error("access denied", 401).unwrap());
     }
 
-    Ok(input)
+    Ok(())
 }
 
-/// GET /nix-cache-info
-///
-/// Returns information about the Nix binary cache, such as the store
-/// directory, desired number of parallel connections, binary cache
-/// version, and priority. This endpoint mirrors the `nix-cache-info`
-/// file typically served by Nix binary caches.
+fn with_basic_auth<H, Fut>(
+    handler: H,
+) -> impl Fn(Request, RouteContext<()>) -> Pin<Box<dyn Future<Output = Result<Response>> + 'static>>
+where
+    H: Fn(Request, RouteContext<()>) -> Fut + Copy + 'static,
+    Fut: Future<Output = Result<Response>> + 'static,
+{
+    move |req: Request, ctx: RouteContext<()>| {
+        Box::pin(async move {
+            if let Err(resp) = authorize(&req, &ctx.env) {
+                return Ok(resp);
+            }
+            handler(req, ctx).await
+        })
+    }
+}
+
 fn get_nix_cache_info(_req: Request, _ctx: RouteContext<()>) -> Result<Response> {
     let info = NixCacheInfo {
         store_dir: Cow::from("/nix/store"),
@@ -135,10 +148,6 @@ async fn get_nar_info(_req: Request, ctx: RouteContext<()>) -> Result<Response> 
 /// narinfo contents. This allows for populating the cache with build
 /// results from external sources.
 async fn put_nar_info(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
-    if basic_auth(&req, &ctx.env).is_err() {
-        return Response::error("access denied", 401);
-    }
-
     let Some(hash) = ctx.param("hash") else {
         return Response::error("missing hash", 400);
     };
@@ -207,10 +216,6 @@ async fn get_nar(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
 /// Uploaded alongside the corresponding `.narinfo` to fully populate
 /// a store path in the cache.
 async fn put_nar(req: Request, ctx: RouteContext<()>) -> Result<Response> {
-    if basic_auth(&req, &ctx.env).is_err() {
-        return Response::error("access denied", 401);
-    }
-
     let Some(hash) = ctx.param("hash") else {
         return Response::error("missing hash", 400);
     };
