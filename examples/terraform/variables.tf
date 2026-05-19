@@ -1,4 +1,4 @@
-variable "cloudflare_account_id" {
+variable "account_id" {
   type        = string
   description = "Cloudflare account ID that owns the Worker and R2 bucket."
 }

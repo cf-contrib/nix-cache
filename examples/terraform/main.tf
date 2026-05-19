@@ -1,6 +1,6 @@
 # Worker script (logical resource — no content yet).
 resource "cloudflare_worker" "nix_cache" {
-  account_id = var.cloudflare_account_id
+  account_id = var.account_id
   name       = var.worker_name
 
   subdomain = {
@@ -12,7 +12,7 @@ resource "cloudflare_worker" "nix_cache" {
 # carries both the JS entry and the wasm module, matching what worker-build
 # emits and what `index.js` imports via `./index_bg.wasm`.
 resource "cloudflare_worker_version" "nix_cache" {
-  account_id         = var.cloudflare_account_id
+  account_id         = var.account_id
   worker_id          = cloudflare_worker.nix_cache.id
   compatibility_date = var.compatibility_date
   main_module        = "index.js"
@@ -51,7 +51,7 @@ resource "cloudflare_worker_version" "nix_cache" {
 
 # Promote the new version to 100% of traffic.
 resource "cloudflare_workers_deployment" "nix_cache" {
-  account_id  = var.cloudflare_account_id
+  account_id  = var.account_id
   script_name = cloudflare_worker.nix_cache.name
   strategy    = "percentage"
 
@@ -65,6 +65,6 @@ resource "cloudflare_workers_deployment" "nix_cache" {
 
 # R2 bucket for cached .narinfo / .nar objects.
 resource "cloudflare_r2_bucket" "nix" {
-  account_id = var.cloudflare_account_id
+  account_id = var.account_id
   name       = var.r2_bucket_name
 }

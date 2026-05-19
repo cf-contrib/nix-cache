@@ -1,4 +1,4 @@
-cloudflare_account_id = "your-cf-account-id"
+account_id     = "your-cf-account-id"
 r2_bucket_name        = "nix-cache"
 
 # Worker name (defaults to "cf-nix-cache"). Must be unique within the account.

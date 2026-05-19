@@ -19,7 +19,7 @@ provider — no `wrangler` or local build step required.
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
-# edit terraform.tfvars: set cloudflare_account_id, r2_bucket_name, nix_token
+# edit terraform.tfvars: set account_id, r2_bucket_name, nix_token
 
 export CLOUDFLARE_API_TOKEN=...
 
@@ -57,7 +57,7 @@ nix copy \
 
 | Variable                | Required | Default        | Description                                                                |
 | ----------------------- | -------- | -------------- | -------------------------------------------------------------------------- |
-| `cloudflare_account_id` | yes      | —              | Cloudflare account ID.                                                     |
+| `account_id`            | yes      | —              | Cloudflare account ID.                                                     |
 | `r2_bucket_name`        | yes      | —              | R2 bucket name to create (or import) for cache storage.                    |
 | `nix_token`             | yes      | —              | Password for HTTP Basic auth on PUT uploads.                               |
 | `nix_secret`            | yes      | —              | `<key-name>:<base64>` Ed25519 signing secret. Required because the Worker rejects unsigned narinfo. |
