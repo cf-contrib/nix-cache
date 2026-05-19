@@ -1,6 +1,6 @@
 data "github_release" "worker" {
-  repository  = var.github_repo
-  owner       = var.github_owner
+  owner       = "cf-contrib"
+  repository  = "nix-cache"
   retrieve_by = "latest"
 }
 

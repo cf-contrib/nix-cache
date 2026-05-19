@@ -63,8 +63,6 @@ nix copy \
 | `nix_secret`            | yes      | —              | `<key-name>:<base64>` Ed25519 signing secret. Required because the Worker rejects unsigned narinfo. |
 | `worker_name`           | no       | `cf-nix-cache` | Cloudflare Worker script name.                                             |
 | `compatibility_date`    | no       | `2026-05-14`   | Workers runtime compatibility date.                                        |
-| `github_owner`          | no       | `cf-contrib`   | GitHub owner hosting the release.                                          |
-| `github_repo`           | no       | `nix-cache`    | GitHub repository hosting the release.                                     |
 
 ## Notes
 

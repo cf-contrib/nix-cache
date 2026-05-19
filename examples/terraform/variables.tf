@@ -32,14 +32,3 @@ variable "nix_secret" {
   sensitive   = true
 }
 
-variable "github_owner" {
-  type        = string
-  description = "GitHub owner that hosts the release."
-  default     = "cf-contrib"
-}
-
-variable "github_repo" {
-  type        = string
-  description = "GitHub repository that hosts the release."
-  default     = "nix-cache"
-}
