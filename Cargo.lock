@@ -771,6 +771,7 @@ dependencies = [
 name = "nix-cache"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "http-auth-basic",
  "narinfo",
  "reqwest",

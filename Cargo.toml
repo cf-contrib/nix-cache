@@ -13,6 +13,9 @@ narinfo = "1.0.1"
 worker = { version = "0.8" }
 worker-macros = { version = "0.8" }
 
+# Used for validating NarHash/FileHash formats in narinfo uploads.
+base64 = "0.22.1"
+
 [dev-dependencies]
 reqwest = "0.13.3"
 tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }
