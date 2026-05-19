@@ -1,6 +1,9 @@
 # nix-cache
 
 [![CI](https://github.com/cf-contrib/nix-cache/actions/workflows/ci.yml/badge.svg)](https://github.com/cf-contrib/nix-cache/actions/workflows/ci.yml)
+[![Rust (edition 2021)](https://img.shields.io/badge/Rust-2021-black?logo=rust)](https://www.rust-lang.org/)
+[![Nix Flake](https://img.shields.io/badge/Nix-Flake-5277C3?logo=nixos&logoColor=white)](https://nixos.wiki/wiki/Flakes)
+[![License: MIT](https://img.shields.io/github/license/cf-contrib/nix-cache)](LICENSE)
 
 Cloudflare-native Nix binary cache backed by **Workers + R2**, implemented in **Rust**.
 
