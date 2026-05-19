@@ -1,0 +1,12 @@
+cloudflare_account_id = "your-cf-account-id"
+r2_bucket_name        = "nix-cache"
+
+# Worker name (defaults to "cf-nix-cache"). Must be unique within the account.
+# worker_name = "cf-nix-cache"
+
+# Password for HTTP Basic auth on PUT uploads (username is x-auth-token).
+nix_token = "change-me"
+
+# Ed25519 signing secret (<key-name>:<base64>) — generate with:
+#   nix key generate-secret --key-name cache.example.org-1
+nix_secret = "cache.example.org-1:..."
