@@ -9,8 +9,40 @@
 
 A Cloudflare-native [Nix](https://nixos.org/) binary cache. Runs on **Workers + R2**, written in **Rust**.
 
+## Why a Worker, not direct R2/S3?
+
+Nix already supports S3-compatible binary caches natively via the
+[`s3://`](https://nix.dev/manual/nix/2.23/store/types/s3-binary-cache-store)
+store type, and R2 speaks the S3 API. You can also front a public R2 bucket
+with a custom domain and use Nix's
+[HTTP Binary Cache Store](https://nix.dev/manual/nix/2.23/store/types/http-binary-cache-store)
+for anonymous reads. Both are simpler than running this Worker.
+
+This project exists for cases where you need things neither of those gives you:
+
+- **No cloud credentials at the client.** `s3://` uses the AWS default
+  credential provider chain — every uploader needs an access key pair. The
+  Worker accepts a single shared HTTP Basic token instead.
+- **Server-side narinfo signing.** With `s3://`, signing happens client-side
+  (`secret-key-files = …`), so every CI runner needs the Nix secret key.
+  The Worker holds the key and signs on upload, so it stays off the clients.
+- **Upload-time validation.** `s3://` is blob storage from the cache's
+  perspective — it stores whatever bytes you PUT. The Worker parses each
+  `.narinfo`, enforces the format, binds the StorePath to the request route,
+  and rejects unsigned uploads.
+- **`POST /` mass-query.** The HTTP Binary Cache protocol supports a batch
+  existence check in a single request, which this Worker implements. The
+  `s3://` store falls back to per-path lookups.
+
+If none of those apply — say you're happy distributing R2 keys to uploaders
+and pre-signing narinfo locally — `s3://` against R2 is simpler.
+
+It's also, honestly, a hobby project — an excuse to spend more time with
+Cloudflare Workers and Rust.
+
 ## Table of contents
 
+- [Why a Worker, not direct R2/S3?](#why-a-worker-not-direct-r2s3)
 - [Features](#features)
 - [How it works](#how-it-works)
 - [Quick start](#quick-start)
