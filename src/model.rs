@@ -10,12 +10,12 @@ pub trait Validate {
 /// Context for validating a narinfo upload.
 ///
 /// `hash` is taken from the request route param (without `.narinfo`).
-pub struct NarInfoUploadContext {
+pub struct NarInfoContext {
     pub hash: String,
 }
 
 impl Validate for NarInfo<'_> {
-    type Context = NarInfoUploadContext;
+    type Context = NarInfoContext;
 
     fn validate(&self, ctx: &Self::Context) -> Result<(), String> {
         // Required fields
@@ -117,15 +117,22 @@ fn validate_sha256_hash_field(field: &str, value: &str) -> Result<(), String> {
 mod tests {
     use super::*;
 
-    fn parse_narinfo(body: &str) -> NarInfo<'_> {
-        NarInfo::parse(body).expect("narinfo should parse")
+    fn narinfo() -> NarInfo<'static> {
+        NarInfo::builder()
+            .store_path("/nix/store/abc-min".into())
+            .url("nar/abc.nar")
+            .nar_hash("sha256-LHdODcc9LKl8TykaDMvSkpcBrXrTcP8aW2B6trJhxdE=".into())
+            .nar_size(1)
+            .references(vec![])
+            .compression(Some("none".into()))
+            .build()
+            .expect("NarInfo should build")
     }
 
     #[test]
     fn narinfo_validate_ok_minimal() {
-        let body = "StorePath: /nix/store/abc-min\nURL: nar/abc.nar\nNarHash: sha256-LHdODcc9LKl8TykaDMvSkpcBrXrTcP8aW2B6trJhxdE=\nNarSize: 1\nReferences: \nCompression: none";
-        let info = parse_narinfo(body);
-        let ctx = NarInfoUploadContext {
+        let info = narinfo();
+        let ctx = NarInfoContext {
             hash: "abc".to_string(),
         };
         assert!(info.validate(&ctx).is_ok());
@@ -133,9 +140,10 @@ mod tests {
 
     #[test]
     fn narinfo_validate_rejects_store_path() {
-        let body = "StorePath: /tmp/abc\nURL: nar/abc.nar\nNarHash: sha256-LHdODcc9LKl8TykaDMvSkpcBrXrTcP8aW2B6trJhxdE=\nNarSize: 1\nReferences: ";
-        let info = parse_narinfo(body);
-        let ctx = NarInfoUploadContext {
+        let mut info = narinfo();
+        info.store_path = "/tmp/abc".into();
+
+        let ctx = NarInfoContext {
             hash: "abc".to_string(),
         };
         let err = info.validate(&ctx).unwrap_err();
@@ -144,9 +152,10 @@ mod tests {
 
     #[test]
     fn narinfo_validate_rejects_url_mismatch() {
-        let body = "StorePath: /nix/store/abc-min\nURL: nar/zzz.nar\nNarHash: sha256-LHdODcc9LKl8TykaDMvSkpcBrXrTcP8aW2B6trJhxdE=\nNarSize: 1\nReferences: ";
-        let info = parse_narinfo(body);
-        let ctx = NarInfoUploadContext {
+        let mut info = narinfo();
+        info.url = "nar/zzz.nar";
+
+        let ctx = NarInfoContext {
             hash: "abc".to_string(),
         };
         let err = info.validate(&ctx).unwrap_err();
@@ -155,9 +164,10 @@ mod tests {
 
     #[test]
     fn narinfo_validate_rejects_nar_size_zero() {
-        let body = "StorePath: /nix/store/abc-min\nURL: nar/abc.nar\nNarHash: sha256-LHdODcc9LKl8TykaDMvSkpcBrXrTcP8aW2B6trJhxdE=\nNarSize: 0\nReferences: ";
-        let info = parse_narinfo(body);
-        let ctx = NarInfoUploadContext {
+        let mut info = narinfo();
+        info.nar_size = 0;
+
+        let ctx = NarInfoContext {
             hash: "abc".to_string(),
         };
         let err = info.validate(&ctx).unwrap_err();
@@ -166,9 +176,10 @@ mod tests {
 
     #[test]
     fn narinfo_validate_rejects_bad_compression() {
-        let body = "StorePath: /nix/store/abc-min\nURL: nar/abc.nar\nNarHash: sha256-LHdODcc9LKl8TykaDMvSkpcBrXrTcP8aW2B6trJhxdE=\nNarSize: 1\nReferences: \nCompression: gzip";
-        let info = parse_narinfo(body);
-        let ctx = NarInfoUploadContext {
+        let mut info = narinfo();
+        info.compression = Some("gzip".into());
+
+        let ctx = NarInfoContext {
             hash: "abc".to_string(),
         };
         let err = info.validate(&ctx).unwrap_err();
