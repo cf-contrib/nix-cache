@@ -9,15 +9,15 @@ variable "worker_name" {
   default     = "cf-nix-cache"
 }
 
-variable "r2_bucket_name" {
-  type        = string
-  description = "R2 bucket name used to store .narinfo and .nar objects."
-}
-
-variable "compatibility_date" {
+variable "worker_compatibility_date" {
   type        = string
   description = "Workers runtime compatibility date."
   default     = "2026-05-14"
+}
+
+variable "r2_bucket_name" {
+  type        = string
+  description = "R2 bucket name used to store .narinfo and .nar objects."
 }
 
 variable "nix_token" {

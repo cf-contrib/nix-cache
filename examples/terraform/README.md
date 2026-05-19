@@ -62,7 +62,7 @@ nix copy \
 | `nix_token`             | yes      | —              | Password for HTTP Basic auth on PUT uploads.                               |
 | `nix_secret`            | yes      | —              | `<key-name>:<base64>` Ed25519 signing secret. Required because the Worker rejects unsigned narinfo. |
 | `worker_name`           | no       | `cf-nix-cache` | Cloudflare Worker script name.                                             |
-| `compatibility_date`    | no       | `2026-05-14`   | Workers runtime compatibility date.                                        |
+| `worker_compatibility_date` | no   | `2026-05-14`   | Workers runtime compatibility date.                                        |
 
 ## Notes
 

@@ -14,7 +14,7 @@ resource "cloudflare_worker" "nix_cache" {
 resource "cloudflare_worker_version" "nix_cache" {
   account_id         = var.account_id
   worker_id          = cloudflare_worker.nix_cache.id
-  compatibility_date = var.compatibility_date
+  compatibility_date = var.worker_compatibility_date
   main_module        = "index.js"
 
   modules = [
