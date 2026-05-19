@@ -51,7 +51,7 @@ impl NarInfoSigKey {
     /// where `NarHash` is in Nix-base32 format (not SRI/base64), and references are
     /// joined by `,`.
     pub fn sign(&self, info: &NarInfo<'_>) -> Result<Sig<'static>, String> {
-        let fingerprint = nar_info_fingerprint(info)?;
+        let fingerprint = narinfo_fingerprint(info)?;
 
         let secret_bytes = STANDARD
             .decode(&self.secret_key_b64)
@@ -176,7 +176,7 @@ impl Validate for NarInfo<'_> {
     }
 }
 
-fn nar_info_fingerprint(info: &NarInfo<'_>) -> Result<String, String> {
+fn narinfo_fingerprint(info: &NarInfo<'_>) -> Result<String, String> {
     // NarHash must be sha256:<nix32> to match Nix's fingerprinting.
     let nar_hash_nix32 = nar_hash_to_nix32(&info.nar_hash)?;
 

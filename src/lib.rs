@@ -16,9 +16,9 @@ async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     Router::new()
         .get("/nix-cache-info", get_nix_cache_info)
         .post_async("/", post_mass_query)
-        .head_async("/:hash", head_nar_info)
-        .get_async("/:hash", get_nar_info)
-        .put_async("/:hash", put_nar_info)
+        .head_async("/:hash", head_narinfo)
+        .get_async("/:hash", get_narinfo)
+        .put_async("/:hash", put_narinfo)
         .head_async("/nar/:hash", head_nar)
         .get_async("/nar/:hash", get_nar)
         .put_async("/nar/:hash", put_nar)
@@ -100,7 +100,7 @@ async fn post_mass_query(mut req: Request, ctx: RouteContext<()>) -> Result<Resp
 }
 
 /// HEAD /:hash.narinfo — used by Nix uploaders to skip already-cached paths.
-async fn head_nar_info(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
+async fn head_narinfo(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let Some(hash) = ctx.param("hash") else {
         return Response::error("missing hash", 400);
     };
@@ -123,7 +123,7 @@ async fn head_nar_info(_req: Request, ctx: RouteContext<()>) -> Result<Response>
 /// identified by `:hash`. The narinfo contains references, nar hash,
 /// file size, and other metadata required by Nix to perform
 /// substitution of the corresponding store path.
-async fn get_nar_info(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
+async fn get_narinfo(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let Some(hash) = ctx.param("hash") else {
         return Response::error("missing hash", 400);
     };
@@ -146,7 +146,7 @@ async fn get_nar_info(_req: Request, ctx: RouteContext<()>) -> Result<Response> 
     let info = match NarInfo::parse(&body) {
         Ok(info) => info,
         Err(err) => {
-            console_error!("nar info parse failed: {err:?}");
+            console_error!("narinfo parse failed: {err:?}");
             return Response::error("object has an invalid body", 500);
         }
     };
@@ -169,7 +169,7 @@ async fn get_nar_info(_req: Request, ctx: RouteContext<()>) -> Result<Response> 
 /// by `:hash` into the cache. The request body should contain the
 /// narinfo contents. This allows for populating the cache with build
 /// results from external sources.
-async fn put_nar_info(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+async fn put_narinfo(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let Some(hash) = ctx.param("hash") else {
         return Response::error("missing hash", 400);
     };
@@ -184,7 +184,7 @@ async fn put_nar_info(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
     let mut info = match NarInfo::parse(&body) {
         Ok(info) => info,
         Err(err) => {
-            console_error!("nar info parse failed: {err:?}");
+            console_error!("narinfo parse failed: {err:?}");
             return Response::error("invalid body", 400);
         }
     };
@@ -207,7 +207,7 @@ async fn put_nar_info(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
         match NarInfoSigKey::parse(&secret.to_string()).and_then(|key| key.sign(&info)) {
             Ok(sig) => info.sigs.push(sig),
             Err(err) => {
-                console_error!("nar info signing failed: {err}");
+                console_error!("narinfo signing failed: {err}");
                 return Response::error("server signing failure", 500);
             }
         }

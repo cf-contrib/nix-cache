@@ -18,7 +18,7 @@ async fn test_get_nix_cache_info() {
 }
 
 #[tokio::test]
-async fn test_get_nar_info() {
+async fn test_get_narinfo() {
     let file_type = "text/x-nix-narinfo";
     let file_name = "j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0.narinfo";
     let file_path = format!("tests/fixture/{file_name}");
@@ -44,7 +44,7 @@ async fn test_get_nar_info() {
 }
 
 #[tokio::test]
-async fn test_post_nar_info() {
+async fn test_post_narinfo() {
     let file_type = "text/plain; charset=utf-8";
     let file_name = "j5m1qd2dbsmhq0mw13yb8wijnm3pq4z0.narinfo";
     let file_path = format!("tests/fixture/{file_name}");
@@ -68,7 +68,7 @@ async fn test_post_nar_info() {
 }
 
 #[tokio::test]
-async fn test_get_nar_info_not_found() {
+async fn test_get_narinfo_not_found() {
     let get_resp = helper::get("j6m2qd3dbsmhq0mw14yb9wijnm4pq6z1.narinfo")
         .await
         .expect("the request failed");
