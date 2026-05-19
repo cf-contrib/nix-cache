@@ -2,21 +2,6 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use ed25519_dalek_v2::{Signature, Signer, SigningKey as DalekSigningKey};
 use narinfo::{NarInfo, Sig};
 
-/// Generic validation trait for domain objects.
-///
-/// `Validate` allows model types (e.g. `narinfo::NarInfo`) to validate themselves
-/// using additional request-specific context (route params, etc.) provided via
-/// the associated `Context` type.
-pub trait Validate {
-    /// Extra inputs required to validate `Self`.
-    type Context;
-
-    /// Validate `self` using the provided `ctx`.
-    ///
-    /// Returns `Ok(())` on success, or a human-readable error message on failure.
-    fn validate(&self, ctx: &Self::Context) -> Result<(), String>;
-}
-
 /// Parsed Nix signing secret used to produce `.narinfo` `Sig:` entries.
 ///
 /// This corresponds to `NIX_SIGNING_SECRET` in the form `<key-name>:<base64>`,
@@ -100,6 +85,21 @@ impl NarInfoSigKey {
 /// `hash` is taken from the request route param (without `.narinfo`).
 pub struct NarInfoContext {
     pub hash: String,
+}
+
+/// Generic validation trait for domain objects.
+///
+/// `Validate` allows model types (e.g. `narinfo::NarInfo`) to validate themselves
+/// using additional request-specific context (route params, etc.) provided via
+/// the associated `Context` type.
+pub trait Validate {
+    /// Extra inputs required to validate `Self`.
+    type Context;
+
+    /// Validate `self` using the provided `ctx`.
+    ///
+    /// Returns `Ok(())` on success, or a human-readable error message on failure.
+    fn validate(&self, ctx: &Self::Context) -> Result<(), String>;
 }
 
 impl Validate for NarInfo<'_> {
