@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.0](https://github.com/cf-contrib/nix-cache/compare/v0.1.0...v0.2.0) (2026-05-19)
+
+
+### Features
+
+* reject unsigned narinfo uploads ([2c842e7](https://github.com/cf-contrib/nix-cache/commit/2c842e7639f70a18cb66003a33eed84c7a99ccd6))
+* **terraform:** expire R2 cache objects after 45 days ([30f0d1e](https://github.com/cf-contrib/nix-cache/commit/30f0d1e40709fd329f2eaca94a3ea4377e86772a))
+
+
+### Bug Fixes
+
+* handle HEAD requests and align narinfo validation with Nix format ([bd9dd30](https://github.com/cf-contrib/nix-cache/commit/bd9dd309cb3001b6ce4c1fe8561922381dc2a6d4))
+
 ## [0.1.0](https://github.com/cf-contrib/nix-cache/compare/v0.0.1...v0.1.0) (2026-05-19)
 
 
