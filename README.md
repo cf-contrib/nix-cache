@@ -1,13 +1,13 @@
 # nix-cache
 
+> **Stop babysitting a Nix cache server.** Deploy this Worker, point `nix.conf` at it, and get reproducible, globally-cached substitutes on Cloudflare's edge — no VMs, no daemons, no ops.
+
 [![CI](https://github.com/cf-contrib/nix-cache/actions/workflows/ci.yml/badge.svg)](https://github.com/cf-contrib/nix-cache/actions/workflows/ci.yml)
 [![Rust (edition 2021)](https://img.shields.io/badge/Rust-2021-black?logo=rust)](https://www.rust-lang.org/)
 [![Nix Flake](https://img.shields.io/badge/Nix-Flake-5277C3?logo=nixos&logoColor=white)](https://nixos.wiki/wiki/Flakes)
 [![License: MIT](https://img.shields.io/github/license/cf-contrib/nix-cache)](LICENSE)
 
 A Cloudflare-native [Nix](https://nixos.org/) binary cache. Runs on **Workers + R2**, written in **Rust**.
-
-> **Stop babysitting a Nix cache server.** Deploy this Worker, point `nix.conf` at it, and get reproducible, globally-cached substitutes on Cloudflare's edge — no VMs, no daemons, no ops.
 
 ## Table of contents
 
@@ -75,13 +75,13 @@ nix build nixpkgs#hello  # served from the Worker if cached
 
 ## HTTP API
 
-| Method | Path                  | Auth   | Description                          |
-| ------ | --------------------- | ------ | ------------------------------------ |
-| `GET`  | `/nix-cache-info`     | public | Cache metadata (priority, etc.).     |
-| `GET`  | `/<hash>.narinfo`     | public | Narinfo for a store path.            |
-| `GET`  | `/nar/<hash>.nar`     | public | NAR archive bytes.                   |
-| `PUT`  | `/<hash>.narinfo`     | basic  | Upload a narinfo.                    |
-| `PUT`  | `/nar/<hash>.nar`     | basic  | Upload a NAR archive.                |
+| Method | Path              | Auth   | Description                      |
+| ------ | ----------------- | ------ | -------------------------------- |
+| `GET`  | `/nix-cache-info` | public | Cache metadata (priority, etc.). |
+| `GET`  | `/<hash>.narinfo` | public | Narinfo for a store path.        |
+| `GET`  | `/nar/<hash>.nar` | public | NAR archive bytes.               |
+| `PUT`  | `/<hash>.narinfo` | basic  | Upload a narinfo.                |
+| `PUT`  | `/nar/<hash>.nar` | basic  | Upload a NAR archive.            |
 
 **Auth:** HTTP Basic with username `x-auth-token` and password `${NIX_TOKEN}`.
 
@@ -91,16 +91,16 @@ nix build nixpkgs#hello  # served from the Worker if cached
 
 ### Environment variables
 
-| Variable             | Required | Description                                                                                                       |
-| -------------------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
-| `NIX_TOKEN`          | for uploads | Password for HTTP Basic auth on `PUT` requests (username is `x-auth-token`).                                   |
-| `NIX_SIGNING_SECRET` | no       | `<key-name>:<base64>` — base64 decodes to 64 Ed25519 secret-key bytes (as emitted by `nix key generate-secret`). |
+| Variable             | Required    | Description                                                                                                      |
+| -------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
+| `NIX_TOKEN`          | for uploads | Password for HTTP Basic auth on `PUT` requests (username is `x-auth-token`).                                     |
+| `NIX_SIGNING_SECRET` | no          | `<key-name>:<base64>` — base64 decodes to 64 Ed25519 secret-key bytes (as emitted by `nix key generate-secret`). |
 
 ### Bindings
 
-| Binding      | Type      | Description                                |
-| ------------ | --------- | ------------------------------------------ |
-| `NIX_BUCKET` | R2 bucket | Stores `.narinfo` and `.nar` objects.      |
+| Binding      | Type      | Description                           |
+| ------------ | --------- | ------------------------------------- |
+| `NIX_BUCKET` | R2 bucket | Stores `.narinfo` and `.nar` objects. |
 
 ## Deployment
 
