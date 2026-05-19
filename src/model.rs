@@ -1,5 +1,6 @@
 use base64::{engine::general_purpose::STANDARD, Engine};
-use narinfo::NarInfo;
+use ed25519_dalek_v2::{Signature, Signer, SigningKey as DalekSigningKey};
+use narinfo::{NarInfo, Sig};
 
 pub trait Validate {
     type Context;
@@ -12,6 +13,78 @@ pub trait Validate {
 /// `hash` is taken from the request route param (without `.narinfo`).
 pub struct NarInfoContext {
     pub hash: String,
+}
+
+pub struct NarInfoSigKey {
+    pub key_name: String,
+    /// Base64 public key bytes (32 bytes when decoded).
+    pub public_key_b64: String,
+    /// Base64 secret key bytes (64 bytes when decoded, as emitted by `nix key generate-secret`).
+    pub secret_key_b64: String,
+}
+
+impl NarInfoSigKey {
+    pub fn parse(secret: &str) -> Result<Self, String> {
+        // Format:
+        //   <key-name>:<base64>
+        // where <base64> is 64 bytes (secret + public) for Ed25519.
+        let (key_name, b64) = secret.split_once(':').ok_or_else(|| {
+            "NIX_SIGNING_SECRET must be in the format <key-name>:<base64>".to_string()
+        })?;
+
+        let key_name = key_name.trim();
+        let b64 = b64.trim();
+
+        if key_name.is_empty() {
+            return Err("NIX_SIGNING_SECRET key name must not be empty".to_string());
+        }
+
+        let decoded = STANDARD
+            .decode(b64)
+            .map_err(|_| "NIX_SIGNING_SECRET must contain valid base64 key bytes".to_string())?;
+
+        if decoded.len() != 64 {
+            return Err("NIX_SIGNING_SECRET base64 must decode to 64 bytes".to_string());
+        }
+
+        let public_key_b64 = STANDARD.encode(&decoded[32..]);
+
+        Ok(Self {
+            key_name: key_name.to_string(),
+            public_key_b64,
+            secret_key_b64: b64.to_string(),
+        })
+    }
+
+    /// Sign narinfo fields required by Nix.
+    ///
+    /// Nix signs the fingerprint:
+    /// `1;<StorePath>;<NarHash>;<NarSize>;<References>`
+    /// where `NarHash` is in Nix-base32 format (not SRI/base64), and references are
+    /// joined by `,`.
+    pub fn sign(&self, info: &NarInfo<'_>) -> Result<Sig<'static>, String> {
+        let fingerprint = nar_info_fingerprint(info)?;
+
+        let secret_bytes = STANDARD
+            .decode(&self.secret_key_b64)
+            .map_err(|_| "signing key must be valid base64".to_string())?;
+
+        let secret_bytes: [u8; 64] = secret_bytes
+            .try_into()
+            .map_err(|_| "signing key must decode to 64 bytes".to_string())?;
+
+        let signing_key = DalekSigningKey::from_keypair_bytes(&secret_bytes)
+            .map_err(|_| "invalid Ed25519 signing key".to_string())?;
+
+        // `ed25519-dalek-v2` uses Ed25519 (SHA-512) internally.
+        let sig: Signature = signing_key.sign(fingerprint.as_bytes());
+        let sig_b64 = STANDARD.encode(sig.to_bytes());
+
+        Ok(Sig {
+            key_name: self.key_name.clone().into(),
+            sig: sig_b64.into(),
+        })
+    }
 }
 
 impl Validate for NarInfo<'_> {
@@ -70,10 +143,94 @@ impl Validate for NarInfo<'_> {
             }
         }
 
-        // Sig: narinfo crate already ensures `Sig` is parseable (contains ':').
-
         Ok(())
     }
+}
+
+fn nar_info_fingerprint(info: &NarInfo<'_>) -> Result<String, String> {
+    // NarHash must be sha256:<nix32> to match Nix's fingerprinting.
+    let nar_hash_nix32 = nar_hash_to_nix32(&info.nar_hash)?;
+
+    let refs = info
+        .references
+        .iter()
+        .map(|r| r.as_ref())
+        .collect::<Vec<_>>()
+        .join(",");
+
+    Ok(format!(
+        "1;{};{};{};{}",
+        info.store_path, nar_hash_nix32, info.nar_size, refs
+    ))
+}
+
+fn nar_hash_to_nix32(value: &str) -> Result<String, String> {
+    // Accept sha256:<base32|base64> or sha256-<base64>
+    let (prefix, hash) = if let Some((prefix, hash)) = value.split_once(':') {
+        (prefix, hash)
+    } else if let Some((prefix, hash)) = value.split_once('-') {
+        (prefix, hash)
+    } else {
+        return Err("NarHash must be sha256:<...> or sha256-<...>".to_string());
+    };
+
+    if prefix != "sha256" {
+        return Err("NarHash must start with sha256".to_string());
+    }
+
+    if hash.is_empty() {
+        return Err("NarHash must include a hash value".to_string());
+    }
+
+    // Already nix32?
+    let nix32_alphabet = b"0123456789abcdfghijklmnpqrsvwxyz";
+    if hash.bytes().all(|c| nix32_alphabet.contains(&c)) {
+        return Ok(format!("sha256:{}", hash));
+    }
+
+    // Otherwise assume base64.
+    let bytes = STANDARD
+        .decode(hash)
+        .map_err(|_| "NarHash must be nix32 or base64".to_string())?;
+
+    if bytes.len() != 32 {
+        return Err("NarHash base64 must decode to 32 bytes".to_string());
+    }
+
+    Ok(format!("sha256:{}", encode_nix32(&bytes)))
+}
+
+fn encode_nix32(bytes: &[u8]) -> String {
+    if bytes.is_empty() {
+        return String::new();
+    }
+
+    const CHARS: &[u8; 32] = b"0123456789abcdfghijklmnpqrsvwxyz";
+
+    let len = (bytes.len() * 8 - 1) / 5 + 1;
+
+    let mut out = String::with_capacity(len);
+
+    for n in (0..len).rev() {
+        let b = n * 5;
+        let i = b / 8;
+        let j = b % 8;
+
+        let cur = bytes[i] as u16;
+        let next = if i >= bytes.len() - 1 {
+            0u16
+        } else {
+            bytes[i + 1] as u16
+        };
+
+        // Combine current and next byte so shifting by 8 is well-defined.
+        let combined = (cur >> j) | (next << (8 - j));
+        let c = (combined & 0x1f) as usize;
+
+        out.push(CHARS[c] as char);
+    }
+
+    out
 }
 
 fn validate_sha256_hash_field(field: &str, value: &str) -> Result<(), String> {
@@ -197,5 +354,37 @@ mod tests {
         let value = "sha256-not_base64";
         let err = validate_sha256_hash_field("NarHash", value).unwrap_err();
         assert!(err.contains("sha256-<base64>"));
+    }
+
+    #[test]
+    fn signing_key_parse_extracts_public_key() {
+        let key = NarInfoSigKey::parse(
+            "cache.example.org-1:wpzRsj2Xn0OiTVS0kP0L0ecJ9tuFNH6qKlGmOb8+a51litiFcHAAMHXGekNc4Br0X6r2mF4k/eqDITsD7hSJXA==",
+        )
+        .expect("key should parse");
+
+        assert_eq!(key.key_name, "cache.example.org-1");
+        assert_eq!(
+            key.public_key_b64,
+            "ZYrYhXBwADB1xnpDXOAa9F+q9pheJP3qgyE7A+4UiVw="
+        );
+    }
+
+    #[test]
+    fn sign_produces_sig_field() {
+        let info = narinfo();
+        let key = NarInfoSigKey::parse(
+            "cache.example.org-1:wpzRsj2Xn0OiTVS0kP0L0ecJ9tuFNH6qKlGmOb8+a51litiFcHAAMHXGekNc4Br0X6r2mF4k/eqDITsD7hSJXA==",
+        )
+        .expect("key should parse");
+
+        let sig = key.sign(&info).expect("should sign");
+
+        assert_eq!(sig.key_name, "cache.example.org-1");
+        // Ed25519 signature is 64 bytes.
+        let decoded = STANDARD
+            .decode(sig.sig.as_ref())
+            .expect("signature should be base64");
+        assert_eq!(decoded.len(), 64);
     }
 }
