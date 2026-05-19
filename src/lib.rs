@@ -3,7 +3,7 @@ use std::{borrow::Cow, fmt::Write};
 mod model;
 
 use http_auth_basic::Credentials;
-use model::{NarInfoContext, Validate};
+use model::{NarInfoContext, NarInfoSigKey, Validate};
 use narinfo::*;
 use worker::*;
 
@@ -126,7 +126,7 @@ async fn get_nar_info(_req: Request, ctx: RouteContext<()>) -> Result<Response> 
     let info = match NarInfo::parse(&body) {
         Ok(info) => info,
         Err(err) => {
-            console_error!("narinfo parse failed: {err:?}");
+            console_error!("nar info parse failed: {err:?}");
             return Response::error("object has an invalid body", 500);
         }
     };
@@ -161,10 +161,10 @@ async fn put_nar_info(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
     };
 
     let body = req.text().await?;
-    let info = match NarInfo::parse(&body) {
+    let mut info = match NarInfo::parse(&body) {
         Ok(info) => info,
         Err(err) => {
-            console_error!("narinfo parse failed: {err:?}");
+            console_error!("nar info parse failed: {err:?}");
             return Response::error("invalid body", 400);
         }
     };
@@ -173,6 +173,21 @@ async fn put_nar_info(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
     };
     if let Err(msg) = info.validate(&info_ctx) {
         return Response::error(msg, 400);
+    }
+
+    // If the uploader didn't provide a Sig:, add one if signing is configured.
+    if info.sigs.is_empty() {
+        if let Ok(secret) = ctx.env.var("NIX_SIGNING_SECRET") {
+            match NarInfoSigKey::parse(&secret.to_string()).and_then(|key| key.sign(&info)) {
+                Ok(sig) => {
+                    info.sigs.push(sig);
+                }
+                Err(err) => {
+                    console_error!("nar info signing failed: {err}");
+                    return Response::error("server signing failure", 500);
+                }
+            }
+        }
     }
 
     let mut data = String::new();
