@@ -175,17 +175,20 @@ async fn put_nar_info(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
         return Response::error(msg, 400);
     }
 
-    // If the uploader didn't provide a Sig:, add one if signing is configured.
+    // Stored narinfo must always carry a Sig:. If the uploader didn't provide
+    // one, sign with NIX_SECRET; if neither path produces a signature, reject.
     if info.sigs.is_empty() {
-        if let Ok(secret) = ctx.env.var("NIX_SECRET") {
-            match NarInfoSigKey::parse(&secret.to_string()).and_then(|key| key.sign(&info)) {
-                Ok(sig) => {
-                    info.sigs.push(sig);
-                }
-                Err(err) => {
-                    console_error!("nar info signing failed: {err}");
-                    return Response::error("server signing failure", 500);
-                }
+        let Ok(secret) = ctx.env.var("NIX_SECRET") else {
+            return Response::error(
+                "narinfo must be signed: no Sig: provided and NIX_SECRET is not configured",
+                400,
+            );
+        };
+        match NarInfoSigKey::parse(&secret.to_string()).and_then(|key| key.sign(&info)) {
+            Ok(sig) => info.sigs.push(sig),
+            Err(err) => {
+                console_error!("nar info signing failed: {err}");
+                return Response::error("server signing failure", 500);
             }
         }
     }

@@ -10,8 +10,6 @@ use narinfo::{NarInfo, Sig};
 pub struct NarInfoSigKey {
     /// Nix signing key name (e.g. `cache.example.org-1`).
     pub key_name: String,
-    /// Base64 public key bytes (32 bytes when decoded).
-    pub public_key_b64: String,
     /// Base64 secret key bytes (64 bytes when decoded, as emitted by `nix key generate-secret`).
     pub secret_key_b64: String,
 }
@@ -40,11 +38,8 @@ impl NarInfoSigKey {
             return Err("NIX_SECRET base64 must decode to 64 bytes".to_string());
         }
 
-        let public_key_b64 = STANDARD.encode(&decoded[32..]);
-
         Ok(Self {
             key_name: key_name.to_string(),
-            public_key_b64,
             secret_key_b64: b64.to_string(),
         })
     }
@@ -372,7 +367,7 @@ mod tests {
     }
 
     #[test]
-    fn signing_key_parse_extracts_public_key() {
+    fn signing_key_parses_name_and_secret() {
         let key = NarInfoSigKey::parse(
             "cache.example.org-1:wpzRsj2Xn0OiTVS0kP0L0ecJ9tuFNH6qKlGmOb8+a51litiFcHAAMHXGekNc4Br0X6r2mF4k/eqDITsD7hSJXA==",
         )
@@ -380,8 +375,8 @@ mod tests {
 
         assert_eq!(key.key_name, "cache.example.org-1");
         assert_eq!(
-            key.public_key_b64,
-            "ZYrYhXBwADB1xnpDXOAa9F+q9pheJP3qgyE7A+4UiVw="
+            key.secret_key_b64,
+            "wpzRsj2Xn0OiTVS0kP0L0ecJ9tuFNH6qKlGmOb8+a51litiFcHAAMHXGekNc4Br0X6r2mF4k/eqDITsD7hSJXA=="
         );
     }
 

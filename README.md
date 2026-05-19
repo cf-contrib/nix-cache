@@ -85,7 +85,7 @@ nix build nixpkgs#hello  # served from the Worker if cached
 
 **Auth:** HTTP Basic with username `x-auth-token` and password `${NIX_TOKEN}`.
 
-**Signing:** if `NIX_SECRET` is set and the uploaded `.narinfo` has no `Sig:` field, the Worker signs it before storing.
+**Signing:** every stored `.narinfo` must carry a `Sig:` field. If the uploaded narinfo has no signature and `NIX_SECRET` is set, the Worker signs it before storing; otherwise the upload is rejected with `400`.
 
 ## Configuration
 
@@ -94,7 +94,7 @@ nix build nixpkgs#hello  # served from the Worker if cached
 | Variable             | Required    | Description                                                                                                      |
 | -------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
 | `NIX_TOKEN`          | for uploads | Password for HTTP Basic auth on `PUT` requests (username is `x-auth-token`).                                     |
-| `NIX_SECRET` | no          | `<key-name>:<base64>` — base64 decodes to 64 Ed25519 secret-key bytes (as emitted by `nix key generate-secret`). |
+| `NIX_SECRET`         | conditional | `<key-name>:<base64>` — base64 decodes to 64 Ed25519 secret-key bytes (as emitted by `nix key generate-secret`). Required unless every uploader sends pre-signed narinfo. |
 
 ### Bindings
 
@@ -104,7 +104,7 @@ nix build nixpkgs#hello  # served from the Worker if cached
 
 ## Deployment
 
-Production deployment is via **Terraform** (Cloudflare provider). A Terraform example will be added in a follow-up.
+Production deployment is via **Terraform** (Cloudflare provider). See [`examples/terraform/`](examples/terraform/) for a complete example that downloads the Worker bundle from this repo's GitHub Releases and deploys it to Cloudflare Workers + R2.
 
 CI publishes the Worker bundle to GitHub Releases:
 
