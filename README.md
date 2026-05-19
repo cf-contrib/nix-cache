@@ -94,6 +94,24 @@ nix copy \
 nix build nixpkgs#hello  # served from the Worker if cached
 ```
 
+### Keep the token out of URLs
+
+For anything beyond a one-shot push, put the token in a `netrc` file so it stays out of shell history, process lists, and CI logs:
+
+```
+machine <your-worker>.workers.dev
+  login x-auth-token
+  password <NIX_TOKEN>
+```
+
+Point Nix at it from `nix.conf`:
+
+```ini
+netrc-file = /home/you/.netrc
+```
+
+Then `nix copy --to https://<your-worker>.workers.dev /nix/store/...` works without embedded credentials.
+
 ## HTTP API
 
 | Method | Path              | Auth   | Description                                |
