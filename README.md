@@ -1,44 +1,33 @@
 # nix-cache
 
-> **Stop babysitting a Nix cache server.** Deploy this Worker, point `nix.conf` at it, and get reproducible, globally-cached substitutes on Cloudflare's edge — no VMs, no daemons, no ops.
+> Stop babysitting a Nix cache server. Deploy this Worker, point `nix.conf` at it, and substitutes come from Cloudflare's edge.
 
 [![CI](https://github.com/cf-contrib/nix-cache/actions/workflows/ci.yml/badge.svg)](https://github.com/cf-contrib/nix-cache/actions/workflows/ci.yml)
 [![Rust (edition 2021)](https://img.shields.io/badge/Rust-2021-black?logo=rust)](https://www.rust-lang.org/)
 [![Nix Flake](https://img.shields.io/badge/Nix-Flake-5277C3?logo=nixos&logoColor=white)](https://nixos.wiki/wiki/Flakes)
 [![License: MIT](https://img.shields.io/github/license/cf-contrib/nix-cache)](LICENSE)
 
-A Cloudflare-native [Nix](https://nixos.org/) binary cache. Runs on **Workers + R2**, written in **Rust**.
+A [Nix](https://nixos.org/) binary cache that runs on Cloudflare Workers and R2. Written in Rust.
 
 ## Why a Worker, not direct R2/S3?
 
-Nix already supports S3-compatible binary caches natively via the
+Nix supports S3-compatible binary caches natively via the
 [`s3://`](https://nix.dev/manual/nix/2.23/store/types/s3-binary-cache-store)
-store type, and R2 speaks the S3 API. You can also front a public R2 bucket
-with a custom domain and use Nix's
+store type, and R2 speaks the S3 API. You can also put a public R2 bucket
+behind a custom domain and use Nix's
 [HTTP Binary Cache Store](https://nix.dev/manual/nix/2.23/store/types/http-binary-cache-store)
 for anonymous reads. Both are simpler than running this Worker.
 
-This project exists for cases where you need things neither of those gives you:
+What you get on top of `s3://`:
 
-- **No cloud credentials at the client.** `s3://` uses the AWS default
-  credential provider chain — every uploader needs an access key pair. The
-  Worker accepts a single shared HTTP Basic token instead.
-- **Server-side narinfo signing.** With `s3://`, signing happens client-side
-  (`secret-key-files = …`), so every CI runner needs the Nix secret key.
-  The Worker holds the key and signs on upload, so it stays off the clients.
-- **Upload-time validation.** `s3://` is blob storage from the cache's
-  perspective — it stores whatever bytes you PUT. The Worker parses each
-  `.narinfo`, enforces the format, binds the StorePath to the request route,
-  and rejects unsigned uploads.
-- **`POST /` mass-query.** The HTTP Binary Cache protocol supports a batch
-  existence check in a single request, which this Worker implements. The
-  `s3://` store falls back to per-path lookups.
+- Clients authenticate with a shared HTTP Basic token, not AWS access keys. The `s3://` store uses the AWS default credential provider chain, so every uploader needs a key pair.
+- Server-side narinfo signing. The Worker holds the Nix signing key and signs uploads itself; the key never has to live on a CI runner's `secret-key-files`.
+- Upload validation. The Worker parses each narinfo, checks the format, binds the StorePath to the request route, and rejects anything unsigned. `s3://` is opaque blob storage.
+- `POST /` mass-query in one request. The HTTP Binary Cache protocol supports it; `s3://` falls back to one HEAD per path.
 
-If none of those apply — say you're happy distributing R2 keys to uploaders
-and pre-signing narinfo locally — `s3://` against R2 is simpler.
+If none of that matters to you, `s3://` to R2 is less code to maintain.
 
-It's also, honestly, a hobby project — an excuse to spend more time with
-Cloudflare Workers and Rust.
+Also: this is a hobby project. I wanted an excuse to spend more time with Cloudflare Workers and Rust, and a Nix cache made a good target.
 
 ## Table of contents
 
@@ -55,12 +44,12 @@ Cloudflare Workers and Rust.
 
 ## Features
 
-- Drop-in replacement for `cache.nixos.org`-style binary caches.
-- Globally distributed reads via Cloudflare's edge.
-- Durable object storage backed by R2 (no egress fees to Workers).
-- Authenticated uploads with HTTP Basic auth.
-- Optional server-side Ed25519 signing of `.narinfo` files.
-- Single Worker bundle (`index.js` + `index_bg.wasm`) — no runtime dependencies.
+- Speaks the same protocol as `cache.nixos.org`.
+- Reads come from Cloudflare's edge.
+- Storage lives in R2 (no egress to Workers).
+- HTTP Basic auth on uploads.
+- Optional Ed25519 signing of narinfo on the server.
+- One Worker bundle: `index.js` plus `index_bg.wasm`.
 
 ## How it works
 
@@ -77,7 +66,7 @@ Cloudflare Workers and Rust.
                                        └──────────────┘
 ```
 
-The Worker serves the Nix binary cache protocol from an R2 bucket. Uploads are authenticated; reads are public.
+Reads are public. Uploads need HTTP Basic auth. Everything lives in one R2 bucket.
 
 ## Quick start
 
@@ -117,9 +106,9 @@ nix build nixpkgs#hello  # served from the Worker if cached
 | `HEAD` | `/nar/<hash>.nar` | public | Existence check for a NAR (200 / 404).     |
 | `PUT`  | `/nar/<hash>.nar` | basic  | Upload a NAR archive.                      |
 
-**Auth:** HTTP Basic with username `x-auth-token` and password `${NIX_TOKEN}`.
+**Auth:** HTTP Basic, username `x-auth-token`, password `${NIX_TOKEN}`.
 
-**Signing:** every stored `.narinfo` must carry a `Sig:` field. If the uploaded narinfo has no signature and `NIX_SECRET` is set, the Worker signs it before storing; otherwise the upload is rejected with `400`.
+**Signing:** every stored narinfo carries a `Sig:`. If the uploader didn't sign and `NIX_SECRET` is set, the Worker signs the upload itself. Otherwise the PUT returns `400`.
 
 ## Configuration
 
@@ -138,20 +127,20 @@ nix build nixpkgs#hello  # served from the Worker if cached
 
 ## Deployment
 
-Production deployment is via **Terraform** (Cloudflare provider). See [`examples/terraform/`](examples/terraform/) for a complete example that downloads the Worker bundle from this repo's GitHub Releases and deploys it to Cloudflare Workers + R2.
+Use Terraform with the Cloudflare provider. The [`examples/terraform/`](examples/terraform/) directory has a full example that pulls the Worker bundle from this repo's GitHub Releases and deploys it to Workers + R2.
 
-CI publishes the Worker bundle to GitHub Releases:
+CI publishes two files to GitHub Releases:
 
 - `build/index.js`
 - `build/index_bg.wasm`
 
-These two files are the minimum required artifacts — `index.js` imports `./index_bg.wasm` at runtime.
+Both are required, because `index.js` imports `./index_bg.wasm` at runtime.
 
-> `wrangler.toml` is provided for **local testing only**, not production deploys.
+> `wrangler.toml` is for local testing, not production.
 
 ## Development
 
-The Nix flake provides a reproducible dev shell with all required tooling:
+The Nix flake gives you a dev shell with the tooling already pinned:
 
 ```bash
 nix develop -c cargo test           # run the test suite
@@ -163,17 +152,17 @@ nix develop -c wrangler dev         # serve locally via wrangler
 
 Runtime crates:
 
-- [`worker`](https://crates.io/crates/worker) / [`worker-macros`](https://crates.io/crates/worker-macros) — Cloudflare Workers Rust SDK
-- [`narinfo`](https://crates.io/crates/narinfo) — parse/serialize `.narinfo`
-- [`http-auth-basic`](https://crates.io/crates/http-auth-basic) — Basic Auth parsing
-- [`ed25519-dalek`](https://crates.io/crates/ed25519-dalek), [`sha2`](https://crates.io/crates/sha2), [`base64`](https://crates.io/crates/base64) — `.narinfo` signing + validation
+- [`worker`](https://crates.io/crates/worker) and [`worker-macros`](https://crates.io/crates/worker-macros), the Cloudflare Workers Rust SDK
+- [`narinfo`](https://crates.io/crates/narinfo) for parsing and serializing `.narinfo`
+- [`http-auth-basic`](https://crates.io/crates/http-auth-basic) for the auth header
+- [`ed25519-dalek`](https://crates.io/crates/ed25519-dalek), [`sha2`](https://crates.io/crates/sha2), and [`base64`](https://crates.io/crates/base64) for signing and validation
 
 Tooling:
 
-- **Nix** — reproducible dev environment
-- **worker-build** — produces the JS + WASM bundle (from Cloudflare's `workers-rs`)
-- **wrangler** — local testing
-- **Terraform** — production deployment
+- Nix, for the dev shell
+- `worker-build` (from Cloudflare's `workers-rs`) for the JS + WASM bundle
+- `wrangler` for local testing
+- Terraform for production
 
 ## License
 
