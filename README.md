@@ -75,13 +75,15 @@ nix build nixpkgs#hello  # served from the Worker if cached
 
 ## HTTP API
 
-| Method | Path              | Auth   | Description                      |
-| ------ | ----------------- | ------ | -------------------------------- |
-| `GET`  | `/nix-cache-info` | public | Cache metadata (priority, etc.). |
-| `GET`  | `/<hash>.narinfo` | public | Narinfo for a store path.        |
-| `GET`  | `/nar/<hash>.nar` | public | NAR archive bytes.               |
-| `PUT`  | `/<hash>.narinfo` | basic  | Upload a narinfo.                |
-| `PUT`  | `/nar/<hash>.nar` | basic  | Upload a NAR archive.            |
+| Method | Path              | Auth   | Description                                |
+| ------ | ----------------- | ------ | ------------------------------------------ |
+| `GET`  | `/nix-cache-info` | public | Cache metadata (priority, etc.).           |
+| `GET`  | `/<hash>.narinfo` | public | Narinfo for a store path.                  |
+| `HEAD` | `/<hash>.narinfo` | public | Existence check for a narinfo (200 / 404). |
+| `PUT`  | `/<hash>.narinfo` | basic  | Upload a narinfo.                          |
+| `GET`  | `/nar/<hash>.nar` | public | NAR archive bytes.                         |
+| `HEAD` | `/nar/<hash>.nar` | public | Existence check for a NAR (200 / 404).     |
+| `PUT`  | `/nar/<hash>.nar` | basic  | Upload a NAR archive.                      |
 
 **Auth:** HTTP Basic with username `x-auth-token` and password `${NIX_TOKEN}`.
 
