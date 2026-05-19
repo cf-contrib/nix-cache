@@ -68,3 +68,27 @@ resource "cloudflare_r2_bucket" "nix" {
   account_id = var.account_id
   name       = var.r2_bucket_name
 }
+
+# Expire cached objects 45 days after upload. Nix re-uploads on every build,
+# so this just bounds storage cost without losing real cache value.
+# `max_age` is in seconds: 45 * 24 * 60 * 60 = 3_888_000.
+resource "cloudflare_r2_bucket_lifecycle" "nix" {
+  account_id  = var.account_id
+  bucket_name = cloudflare_r2_bucket.nix.name
+
+  rules = [
+    {
+      id      = "delete-after-45-days"
+      enabled = true
+      conditions = {
+        prefix = ""
+      }
+      delete_objects_transition = {
+        condition = {
+          type    = "Age"
+          max_age = 3888000
+        }
+      }
+    },
+  ]
+}
