@@ -7,7 +7,7 @@
 
 Cloudflare-native Nix binary cache backed by **Workers + R2**, implemented in **Rust**.
 
-**CTA:** If you want reproducible, globally-cached Nix substitutes without running your own Nix daemon server, deploy this Worker and point `nix.conf` at it.
+> **Stop babysitting a Nix cache server.** Deploy this Worker, point `nix.conf` at it, and get reproducible, globally-cached substitutes on Cloudflare's edge — no VMs, no daemons, no ops.
 
 ## What this provides
 
