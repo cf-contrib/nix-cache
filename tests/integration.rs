@@ -1,3 +1,5 @@
+#![cfg(feature = "integration")]
+
 mod helper;
 
 use narinfo::{NarInfo, NixCacheInfo};
