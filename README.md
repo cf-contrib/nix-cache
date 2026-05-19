@@ -132,7 +132,7 @@ Runtime crates:
 - [`worker`](https://crates.io/crates/worker) / [`worker-macros`](https://crates.io/crates/worker-macros) — Cloudflare Workers Rust SDK
 - [`narinfo`](https://crates.io/crates/narinfo) — parse/serialize `.narinfo`
 - [`http-auth-basic`](https://crates.io/crates/http-auth-basic) — Basic Auth parsing
-- [`ed25519-dalek-v2`](https://crates.io/crates/ed25519-dalek), [`sha2`](https://crates.io/crates/sha2), [`base64`](https://crates.io/crates/base64) — `.narinfo` signing + validation
+- [`ed25519-dalek`](https://crates.io/crates/ed25519-dalek), [`sha2`](https://crates.io/crates/sha2), [`base64`](https://crates.io/crates/base64) — `.narinfo` signing + validation
 
 Tooling:
 

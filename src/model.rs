@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose::STANDARD, Engine};
-use ed25519_dalek_v2::{Signature, Signer, SigningKey as DalekSigningKey};
+use ed25519_dalek::{Signature, Signer, SigningKey as DalekSigningKey};
 use narinfo::{NarInfo, Sig};
 
 /// Parsed Nix signing secret used to produce `.narinfo` `Sig:` entries.
@@ -69,7 +69,7 @@ impl NarInfoSigKey {
         let signing_key = DalekSigningKey::from_keypair_bytes(&secret_bytes)
             .map_err(|_| "invalid Ed25519 signing key".to_string())?;
 
-        // `ed25519-dalek-v2` uses Ed25519 (SHA-512) internally.
+        // `ed25519-dalek` uses Ed25519 (SHA-512) internally.
         let sig: Signature = signing_key.sign(fingerprint.as_bytes());
         let sig_b64 = STANDARD.encode(sig.to_bytes());
 
