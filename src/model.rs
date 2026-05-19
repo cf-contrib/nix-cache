@@ -8,13 +8,6 @@ pub trait Validate {
     fn validate(&self, ctx: &Self::Context) -> Result<(), String>;
 }
 
-/// Context for validating a narinfo upload.
-///
-/// `hash` is taken from the request route param (without `.narinfo`).
-pub struct NarInfoContext {
-    pub hash: String,
-}
-
 pub struct NarInfoSigKey {
     pub key_name: String,
     /// Base64 public key bytes (32 bytes when decoded).
@@ -85,6 +78,13 @@ impl NarInfoSigKey {
             sig: sig_b64.into(),
         })
     }
+}
+
+/// Context for validating a narinfo upload.
+///
+/// `hash` is taken from the request route param (without `.narinfo`).
+pub struct NarInfoContext {
+    pub hash: String,
 }
 
 impl Validate for NarInfo<'_> {
