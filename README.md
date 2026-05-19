@@ -85,7 +85,7 @@ nix build nixpkgs#hello  # served from the Worker if cached
 
 **Auth:** HTTP Basic with username `x-auth-token` and password `${NIX_TOKEN}`.
 
-**Signing:** if `NIX_SIGNING_SECRET` is set and the uploaded `.narinfo` has no `Sig:` field, the Worker signs it before storing.
+**Signing:** if `NIX_SECRET` is set and the uploaded `.narinfo` has no `Sig:` field, the Worker signs it before storing.
 
 ## Configuration
 
@@ -94,7 +94,7 @@ nix build nixpkgs#hello  # served from the Worker if cached
 | Variable             | Required    | Description                                                                                                      |
 | -------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
 | `NIX_TOKEN`          | for uploads | Password for HTTP Basic auth on `PUT` requests (username is `x-auth-token`).                                     |
-| `NIX_SIGNING_SECRET` | no          | `<key-name>:<base64>` — base64 decodes to 64 Ed25519 secret-key bytes (as emitted by `nix key generate-secret`). |
+| `NIX_SECRET` | no          | `<key-name>:<base64>` — base64 decodes to 64 Ed25519 secret-key bytes (as emitted by `nix key generate-secret`). |
 
 ### Bindings
 

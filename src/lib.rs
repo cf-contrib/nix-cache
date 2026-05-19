@@ -177,7 +177,7 @@ async fn put_nar_info(mut req: Request, ctx: RouteContext<()>) -> Result<Respons
 
     // If the uploader didn't provide a Sig:, add one if signing is configured.
     if info.sigs.is_empty() {
-        if let Ok(secret) = ctx.env.var("NIX_SIGNING_SECRET") {
+        if let Ok(secret) = ctx.env.var("NIX_SECRET") {
             match NarInfoSigKey::parse(&secret.to_string()).and_then(|key| key.sign(&info)) {
                 Ok(sig) => {
                     info.sigs.push(sig);
