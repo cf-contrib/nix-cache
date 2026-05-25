@@ -13,6 +13,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Generate App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: cf-contrib
+          repositories: nix-cache
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v22
       - name: Setup Nix Cache
@@ -23,7 +31,7 @@ jobs:
       - name: Update root flake.lock
         uses: DeterminateSystems/update-flake-lock@v28
         with:
-          token: ${{ github.token }}
+          token: ${{ steps.app-token.outputs.token }}
           pr-title: "chore(flake): update flake.lock"
           pr-labels: |
             dependencies
