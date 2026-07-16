@@ -17,7 +17,7 @@ worker-macros = { version = "0.8" }
 base64 = "0.22.1"
 
 # Used for server-side narinfo signing (issue #13).
-ed25519-dalek = { version = "2.2", default-features = false, features = ["alloc"] }
+ed25519-dalek = { version = "3.0", default-features = false, features = ["alloc"] }
 sha2 = { version = "0.11", default-features = false }
 
 [dev-dependencies]
