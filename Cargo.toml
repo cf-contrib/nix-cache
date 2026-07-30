@@ -14,7 +14,7 @@ worker = { version = "0.8" }
 worker-macros = { version = "0.8" }
 
 # Used for validating NarHash/FileHash formats in narinfo uploads.
-base64 = "0.22.1"
+base64 = "0.23.0"
 
 # Used for server-side narinfo signing (issue #13).
 ed25519-dalek = { version = "3.0", default-features = false, features = ["alloc"] }
